@@ -1,0 +1,9 @@
+{
+  "name": "DataRW",
+  "description": "A multi-tenant platform for NGOs and companies in Rwanda for data collection, M&E, and project management.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
