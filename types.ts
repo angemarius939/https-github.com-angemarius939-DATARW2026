@@ -87,6 +87,7 @@ export interface ProjectIndicator {
   periodicData: IndicatorTarget[];
   dataSource: string;
   responsible: string;
+  linkedLogframeId?: string;
 }
 
 // Project Structures
