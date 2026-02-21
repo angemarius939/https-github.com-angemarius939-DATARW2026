@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+// Added missing Users and Filter icons to the import list
 import { 
   Wrench, Database, Layout, Smartphone, 
   Plus, Search, Trash2, Save, X, Edit3, 
@@ -10,15 +11,27 @@ import {
   ArrowRight, ToggleLeft, GripVertical, MoreHorizontal,
   Bell, CheckSquare as CheckSquareIcon, Send, RefreshCw,
   Clock, AlertTriangle, ChevronUp, ChevronDown, Settings2,
-  Trash
+  Trash, UserPlus, UserCheck, UserX, User, ShieldCheck,
+  MoreVertical, ShieldAlert, Users, Filter, FolderKanban, Link2
 } from 'lucide-react';
 import { 
   CustomPage, VirtualTable, VirtualField, 
   WorkflowAction, PageWidget, DataSourceType,
-  FormDefinition, FormFieldDefinition 
+  FormDefinition, FormFieldDefinition, Project
 } from '../types';
 
+interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Project Manager' | 'Field Officer' | 'Viewer';
+  status: 'ACTIVE' | 'INACTIVE';
+  lastLogin: string;
+  department: string;
+}
+
 interface AdminPanelProps {
+  projects: Project[];
   customPages: CustomPage[];
   setCustomPages: (p: CustomPage[]) => void;
   virtualTables: VirtualTable[];
@@ -31,12 +44,21 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
-  customPages, setCustomPages, virtualTables, setVirtualTables, 
+  projects, customPages, setCustomPages, virtualTables, setVirtualTables, 
   workflows, setWorkflows, dynamicForms, setDynamicForms, onNotify 
 }) => {
-  const [activeSection, setActiveSection] = useState<'pages' | 'database' | 'workflows' | 'forms'>('pages');
+  const [activeSection, setActiveSection] = useState<'pages' | 'database' | 'workflows' | 'forms' | 'users'>('pages');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Local state for User Management demo
+  const [users, setUsers] = useState<AppUser[]>([
+    { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
+    { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
+    { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
+    { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
+  ]);
 
   // --- Form Builder Helpers ---
   const addFormField = () => {
@@ -78,7 +100,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // --- Page Builder Logic ---
   const handleCreatePage = () => {
-    setEditingItem({ id: '', name: '', description: '', widgets: [], visibility: 'PUBLIC' });
+    setEditingItem({ id: '', name: '', description: '', widgets: [], visibility: 'PUBLIC', linkedProjectId: '' });
     setIsEditorOpen(true);
   };
 
@@ -158,6 +180,38 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     onNotify("Automation workflow deployed");
   };
 
+  // --- User Management Logic ---
+  const handleCreateUser = () => {
+    setEditingItem({ id: '', name: '', email: '', role: 'Field Officer', status: 'ACTIVE', department: '', lastLogin: 'Never' });
+    setIsEditorOpen(true);
+  };
+
+  const handleSaveUser = (user: AppUser) => {
+    const updated = user.id
+      ? users.map(u => u.id === user.id ? user : u)
+      : [{ ...user, id: 'u-' + Date.now() }, ...users];
+    setUsers(updated);
+    setIsEditorOpen(false);
+    onNotify(user.id ? "User profile updated" : "User invitation sent successfully");
+  };
+
+  const toggleUserStatus = (userId: string) => {
+    setUsers(users.map(u => {
+        if (u.id === userId) {
+            const nextStatus = u.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+            onNotify(`Account for ${u.name} is now ${nextStatus.toLowerCase()}`, nextStatus === 'ACTIVE' ? 'success' : 'error');
+            return { ...u, status: nextStatus };
+        }
+        return u;
+    }));
+  };
+
+  const filteredUsers = users.filter(u => 
+    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    u.department.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="flex flex-col h-full bg-slate-50 animate-fade-in">
       {/* Admin Header */}
@@ -220,34 +274,57 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <ChevronRight size={14} className={activeSection === 'workflows' ? 'opacity-100' : 'opacity-0'} />
            </button>
+           <div className="pt-4 mt-4 border-t border-slate-200">
+             <button 
+               onClick={() => setActiveSection('users')}
+               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${activeSection === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-white'}`}
+             >
+                <div className="flex items-center gap-3 font-bold text-sm">
+                  <Users size={18} /> User Management
+                </div>
+                <ChevronRight size={14} className={activeSection === 'users' ? 'opacity-100' : 'opacity-0'} />
+             </button>
+           </div>
         </aside>
 
         {/* Content Area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar">
            {activeSection === 'pages' && (
              <div className="space-y-6">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center px-2">
                    <h2 className="text-xl font-black text-slate-900">Custom Dashboard Pages</h2>
                    <button onClick={handleCreatePage} className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-indigo-600 hover:shadow-md transition-all">
                       <Plus size={16} /> New Page
                    </button>
                 </div>
                 <div className="grid gap-4">
-                   {customPages.map(page => (
-                      <div key={page.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-all">
-                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Layout size={24}/></div>
-                            <div>
-                               <h4 className="font-black text-slate-900">{page.name}</h4>
-                               <p className="text-xs text-slate-400 uppercase font-black tracking-widest mt-0.5">{page.widgets.length} Components • {page.visibility}</p>
-                            </div>
-                         </div>
-                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => {setEditingItem(page); setIsEditorOpen(true)}} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={18}/></button>
-                            <button onClick={() => setCustomPages(customPages.filter(p => p.id !== page.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
-                         </div>
-                      </div>
-                   ))}
+                   {customPages.map(page => {
+                      const linkedProject = projects.find(p => p.id === page.linkedProjectId);
+                      return (
+                        <div key={page.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-all">
+                          <div className="flex items-center gap-4">
+                              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Layout size={24}/></div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                    <h4 className="font-black text-slate-900">{page.name}</h4>
+                                    {linkedProject ? (
+                                        <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-indigo-900 text-white px-2 py-0.5 rounded shadow-sm">
+                                            <FolderKanban size={10}/> {linkedProject.name}
+                                        </span>
+                                    ) : (
+                                        <span className="text-[9px] font-black uppercase bg-slate-100 text-slate-500 px-2 py-0.5 rounded border border-slate-200">Global</span>
+                                    )}
+                                </div>
+                                <p className="text-xs text-slate-400 uppercase font-black tracking-widest mt-0.5">{page.widgets.length} Components • {page.visibility}</p>
+                              </div>
+                          </div>
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button onClick={() => {setEditingItem(page); setIsEditorOpen(true)}} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={18}/></button>
+                              <button onClick={() => setCustomPages(customPages.filter(p => p.id !== page.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+                          </div>
+                        </div>
+                      );
+                   })}
                    {customPages.length === 0 && (
                      <div className="py-20 text-center border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white/50">
                         <Layout className="mx-auto text-slate-200 mb-4" size={48} />
@@ -258,6 +335,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
              </div>
            )}
 
+           {/* Other sections remain same... */}
            {activeSection === 'database' && (
              <div className="space-y-6">
                 <div className="flex justify-between items-center">
@@ -412,6 +490,130 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
              </div>
            )}
+
+           {activeSection === 'users' && (
+             <div className="space-y-6 animate-fade-in">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                   <div>
+                      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <Users size={20} className="text-indigo-600" />
+                        Identity & Access Registry
+                      </h2>
+                      <p className="text-sm text-slate-500 font-medium">Manage user accounts, roles, and platform permissions.</p>
+                   </div>
+                   <button 
+                     onClick={handleCreateUser}
+                     className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                   >
+                      <UserPlus size={16} /> Invite New User
+                   </button>
+                </div>
+
+                <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+                   <div className="relative flex-1 w-full">
+                      <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                      <input 
+                        type="text" 
+                        placeholder="Search users by name, email, or department..." 
+                        className="w-full pl-12 pr-4 py-3 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-medium"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                   </div>
+                   <div className="flex gap-2">
+                      <button className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all" title="User Filters"><Filter size={20}/></button>
+                      <button className="p-3 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all" title="Security Settings"><ShieldCheck size={20}/></button>
+                   </div>
+                </div>
+
+                <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                   <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm border-collapse">
+                         <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                            <tr>
+                               <th className="px-8 py-5">User Profile</th>
+                               <th className="px-8 py-5">Role & Dept</th>
+                               <th className="px-8 py-5">Access Status</th>
+                               <th className="px-8 py-5">Last Activity</th>
+                               <th className="px-8 py-5 text-right">Administrative Actions</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-slate-100">
+                            {filteredUsers.map((user) => (
+                               <tr key={user.id} className="hover:bg-slate-50/50 transition-colors group">
+                                  <td className="px-8 py-6">
+                                     <div className="flex items-center gap-4">
+                                        <div className={`w-12 h-12 ${user.status === 'ACTIVE' ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-100 text-slate-400'} rounded-2xl flex items-center justify-center font-black text-sm shadow-inner group-hover:scale-105 transition-transform border border-slate-100`}>
+                                           {user.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                        </div>
+                                        <div>
+                                           <p className="font-black text-slate-900 text-base leading-tight">{user.name}</p>
+                                           <p className="text-xs text-slate-400 font-medium mt-0.5">{user.email}</p>
+                                        </div>
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-6">
+                                     <div className="space-y-1.5">
+                                        <span className={`text-[9px] font-black uppercase px-2.5 py-1 rounded-lg border flex items-center gap-1.5 w-fit
+                                          ${user.role === 'Admin' ? 'bg-purple-50 text-purple-700 border-purple-100' : 
+                                            user.role === 'Project Manager' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                            'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                          <Shield size={10}/> {user.role}
+                                        </span>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{user.department || 'General'}</p>
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-6">
+                                     <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-2 w-fit
+                                       ${user.status === 'ACTIVE' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600 opacity-60'}`}>
+                                        <div className={`w-1.5 h-1.5 rounded-full ${user.status === 'ACTIVE' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                        {user.status}
+                                     </span>
+                                  </td>
+                                  <td className="px-8 py-6">
+                                     <div className="flex items-center gap-2 text-slate-500 font-bold text-xs">
+                                        <Clock size={14} className="text-slate-300" />
+                                        {user.lastLogin}
+                                     </div>
+                                  </td>
+                                  <td className="px-8 py-6 text-right">
+                                     <div className="flex items-center justify-end gap-3">
+                                        <button 
+                                          onClick={() => { setEditingItem(user); setIsEditorOpen(true); }}
+                                          className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" 
+                                          title="Edit Profile"
+                                        >
+                                           <Edit3 size={18} />
+                                        </button>
+                                        <button 
+                                          onClick={() => toggleUserStatus(user.id)}
+                                          className={`p-2.5 rounded-xl transition-all ${user.status === 'ACTIVE' ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'}`} 
+                                          title={user.status === 'ACTIVE' ? 'Deactivate User' : 'Activate User'}
+                                        >
+                                           {user.status === 'ACTIVE' ? <UserX size={18} /> : <UserCheck size={18} />}
+                                        </button>
+                                        <button className="p-2.5 text-slate-300 hover:text-slate-900 transition-colors">
+                                          <MoreVertical size={18} />
+                                        </button>
+                                     </div>
+                                  </td>
+                               </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                   </div>
+                   {filteredUsers.length === 0 && (
+                     <div className="py-24 text-center">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                           <User size={40} className="text-slate-200" />
+                        </div>
+                        <p className="text-lg font-black text-slate-300 uppercase tracking-widest">No users matching search</p>
+                        <button onClick={() => setSearchQuery('')} className="mt-4 text-indigo-600 font-bold text-xs uppercase tracking-widest hover:underline">Clear search terms</button>
+                     </div>
+                   )}
+                </div>
+             </div>
+           )}
         </div>
       </div>
 
@@ -427,8 +629,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                        {activeSection === 'pages' ? <Layout className="text-indigo-400" /> : 
                         activeSection === 'forms' ? <FilePlus className="text-indigo-400" /> :
                         activeSection === 'workflows' ? <Zap className="text-amber-400" /> :
+                        activeSection === 'users' ? <User className="text-indigo-400" /> :
                         <Database className="text-indigo-400" />}
-                       {editingItem?.id ? `Modify ${activeSection.slice(0,-1)}` : `New ${activeSection.slice(0,-1)} Builder`}
+                       {editingItem?.id ? `Modify ${activeSection.slice(0,-1)}` : `New ${activeSection.slice(0,-1).charAt(0).toUpperCase() + activeSection.slice(1,-1)} Entry`}
                     </h3>
                  </div>
                  <div className="flex gap-3">
@@ -438,11 +641,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         if(activeSection === 'pages') handleSavePage(editingItem);
                         else if(activeSection === 'forms') handleSaveForm(editingItem);
                         else if(activeSection === 'workflows') handleSaveWorkflow(editingItem);
+                        else if(activeSection === 'users') handleSaveUser(editingItem);
                         else handleSaveTable(editingItem);
                       }}
                       className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg"
                     >
-                       Deploy Component
+                       Deploy Changes
                     </button>
                  </div>
               </div>
@@ -452,49 +656,181 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="max-w-4xl mx-auto space-y-8 pb-20">
                      
                      {/* Identity Section */}
-                     <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
-                        <div className="space-y-4">
-                           <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Component Identity</label>
-                           <input 
-                              className="w-full text-4xl font-black text-slate-900 bg-transparent border-none outline-none focus:ring-0 placeholder:text-slate-200" 
-                              placeholder={`${activeSection.slice(0,-1).charAt(0).toUpperCase() + activeSection.slice(1,-1)} Title...`}
-                              value={editingItem.name}
-                              onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
-                           />
-                           <input 
-                              className="w-full text-slate-500 font-medium bg-transparent border-none outline-none focus:ring-0" 
-                              placeholder="Describe the purpose of this component for your organization..."
-                              value={editingItem.description || ''}
-                              onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
-                           />
-                        </div>
+                     {activeSection !== 'users' && (
+                        <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
+                            <div className="space-y-4">
+                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Component Identity</label>
+                            <input 
+                                className="w-full text-4xl font-black text-slate-900 bg-transparent border-none outline-none focus:ring-0 placeholder:text-slate-200" 
+                                placeholder={`${activeSection.slice(0,-1).charAt(0).toUpperCase() + activeSection.slice(1,-1)} Title...`}
+                                value={editingItem.name}
+                                onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                            />
+                            <input 
+                                className="w-full text-slate-500 font-medium bg-transparent border-none outline-none focus:ring-0" 
+                                placeholder="Describe the purpose of this component for your organization..."
+                                value={editingItem.description || ''}
+                                onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
+                            />
+                            </div>
 
-                        {activeSection === 'forms' && (
-                           <div className="pt-6 border-t border-slate-100">
-                              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-3">Database Target</label>
-                              <div className="flex items-center gap-4">
-                                 <select 
-                                    className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-                                    value={editingItem.targetTableId || ''}
-                                    onChange={(e) => setEditingItem({...editingItem, targetTableId: e.target.value})}
-                                 >
-                                    <option value="">-- Select Virtual Table --</option>
-                                    {virtualTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-                                 </select>
-                                 <div className="flex bg-slate-100 p-1 rounded-xl">
-                                    <button 
-                                      onClick={() => setEditingItem({...editingItem, publishStatus: 'DRAFT'})}
-                                      className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${editingItem.publishStatus === 'DRAFT' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                                    >Draft</button>
-                                    <button 
-                                      onClick={() => setEditingItem({...editingItem, publishStatus: 'PUBLISHED'})}
-                                      className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${editingItem.publishStatus === 'PUBLISHED' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                                    >Live</button>
+                            {activeSection === 'pages' && (
+                                <div className="pt-6 border-t border-slate-100 space-y-4">
+                                    <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                        <Link2 size={12} className="text-indigo-600" /> Contextual Scoping
+                                    </label>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1.5">
+                                            <p className="text-xs font-bold text-slate-500 px-1">Project Association</p>
+                                            <select 
+                                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                                value={editingItem.linkedProjectId || ''}
+                                                onChange={(e) => setEditingItem({...editingItem, linkedProjectId: e.target.value})}
+                                            >
+                                                <option value="">-- Global Organization (All Projects) --</option>
+                                                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <p className="text-xs font-bold text-slate-500 px-1">Accessibility</p>
+                                            <select 
+                                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                                value={editingItem.visibility}
+                                                onChange={(e) => setEditingItem({...editingItem, visibility: e.target.value as any})}
+                                            >
+                                                <option value="PUBLIC">Visible to all Organization Members</option>
+                                                <option value="PRIVATE">Admin & Managers Only</option>
+                                                <option value="ROLE_BASED">Role-specific Access</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 italic font-medium px-1">Linking to a project will automatically filter dashboard widgets to that project's context by default.</p>
+                                </div>
+                            )}
+
+                            {activeSection === 'forms' && (
+                            <div className="pt-6 border-t border-slate-100">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-3">Database Target</label>
+                                <div className="flex items-center gap-4">
+                                    <select 
+                                        className="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                        value={editingItem.targetTableId || ''}
+                                        onChange={(e) => setEditingItem({...editingItem, targetTableId: e.target.value})}
+                                    >
+                                        <option value="">-- Select Virtual Table --</option>
+                                        {virtualTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                                    </select>
+                                    <div className="flex bg-slate-100 p-1 rounded-xl">
+                                        <button 
+                                        onClick={() => setEditingItem({...editingItem, publishStatus: 'DRAFT'})}
+                                        className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${editingItem.publishStatus === 'DRAFT' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >Draft</button>
+                                        <button 
+                                        onClick={() => setEditingItem({...editingItem, publishStatus: 'PUBLISHED'})}
+                                        className={`px-4 py-2 text-[10px] font-black uppercase rounded-lg transition-all ${editingItem.publishStatus === 'PUBLISHED' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                                        >Live</button>
+                                    </div>
+                                </div>
+                            </div>
+                            )}
+                        </div>
+                     )}
+
+                     {/* User Editor Specific Section */}
+                     {activeSection === 'users' && (
+                        <div className="space-y-8">
+                           <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
+                              <div className="flex items-center gap-8">
+                                 <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 shadow-inner shrink-0">
+                                    <User size={48} />
+                                 </div>
+                                 <div className="flex-1 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Full Legal Name</label>
+                                    <input 
+                                       className="w-full text-3xl font-black text-slate-900 border-none outline-none focus:ring-0 placeholder:text-slate-200" 
+                                       placeholder="e.g. Marie Uwase"
+                                       value={editingItem.name}
+                                       onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                    />
+                                 </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                       <Mail size={12} className="text-indigo-600"/> Professional Email
+                                    </label>
+                                    <input 
+                                       type="email"
+                                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                       placeholder="email@organization.org"
+                                       value={editingItem.email}
+                                       onChange={(e) => setEditingItem({...editingItem, email: e.target.value})}
+                                    />
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                       <Layers size={12} className="text-indigo-600"/> Primary Department
+                                    </label>
+                                    <select 
+                                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                       value={editingItem.department}
+                                       onChange={(e) => setEditingItem({...editingItem, department: e.target.value})}
+                                    >
+                                       <option value="">-- No Department --</option>
+                                       <option value="Operations">Operations & Logistics</option>
+                                       <option value="Programs">Program Management</option>
+                                       <option value="Field">Field Implementation</option>
+                                       <option value="M&E">Monitoring & Evaluation</option>
+                                       <option value="Finance">Finance & HR</option>
+                                    </select>
+                                 </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                       <Shield size={12} className="text-indigo-600"/> Security Level (Role)
+                                    </label>
+                                    <select 
+                                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                       value={editingItem.role}
+                                       onChange={(e) => setEditingItem({...editingItem, role: e.target.value})}
+                                    >
+                                       <option value="Admin">System Administrator</option>
+                                       <option value="Project Manager">Project Manager</option>
+                                       <option value="Field Officer">Field Officer</option>
+                                       <option value="Viewer">Stakeholder (Read Only)</option>
+                                    </select>
+                                 </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Account Activation Status</label>
+                                    <div className="flex bg-slate-100 p-1 rounded-2xl">
+                                       <button 
+                                          onClick={() => setEditingItem({...editingItem, status: 'ACTIVE'})}
+                                          className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${editingItem.status === 'ACTIVE' ? 'bg-white shadow-md text-green-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                       >
+                                          Active
+                                       </button>
+                                       <button 
+                                          onClick={() => setEditingItem({...editingItem, status: 'INACTIVE'})}
+                                          className={`flex-1 py-3 text-[10px] font-black uppercase rounded-xl transition-all ${editingItem.status === 'INACTIVE' ? 'bg-white shadow-md text-red-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                       >
+                                          Deactivated
+                                       </button>
+                                    </div>
+                                 </div>
+                              </div>
+
+                              <div className="p-6 bg-amber-50 border border-amber-100 rounded-[2rem] flex gap-5">
+                                 <ShieldAlert className="text-amber-600 shrink-0" />
+                                 <div className="text-xs text-amber-700 font-medium leading-relaxed">
+                                    <span className="font-black">Access Control Notice:</span> Changing a user's role will immediately update their visibility and action permissions across all linked projects and virtual databases. This action is logged for compliance audits.
                                  </div>
                               </div>
                            </div>
-                        )}
-                     </div>
+                        </div>
+                     )}
 
                      {/* Form Builder Specific Section */}
                      {activeSection === 'forms' && (

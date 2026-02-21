@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { CustomPage, PageWidget } from '../types';
+import { CustomPage, PageWidget, DataSourceType } from '../types';
 import { Table, Grid, Database, FileText, FolderKanban, Users, Activity, Layout, PieChart as PieChartIcon, BarChart as BarChartIcon } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -10,106 +10,92 @@ interface CustomPageViewProps {
 
 const CustomPageView: React.FC<CustomPageViewProps> = ({ page }) => {
 
-  // Mock Data Generators (In a real app, this would be an API call based on dataSource)
-  const getMockData = (source: string) => {
-      switch(source) {
-          case 'PROJECTS':
-              return [
-                  { id: 1, col1: 'Clean Water Initiative', col2: 'Northern Prov.', col3: 'On Track', col4: '45,000,000' },
-                  { id: 2, col1: 'Rural Education', col2: 'Eastern Prov.', col3: 'Delayed', col4: '32,000,000' },
-                  { id: 3, col1: 'Agri-Tech Training', col2: 'Southern Prov.', col3: 'At Risk', col4: '15,000,000' },
-                  { id: 4, col1: 'Health V2', col2: 'Kigali City', col3: 'On Track', col4: '120,000,000' },
-              ];
-          case 'SURVEYS':
-              return [
-                  { id: 1, col1: 'Baseline Survey Q1', col2: 'Active', col3: '1,204 Responses', col4: '2024-01-15' },
-                  { id: 2, col1: 'Beneficiary Feedback', col2: 'Draft', col3: '0 Responses', col4: '2024-03-01' },
-                  { id: 3, col1: 'Endline Assessment', col2: 'Closed', col3: '856 Responses', col4: '2023-12-10' },
-              ];
-          case 'BENEFICIARIES':
-              return [
-                  { id: 1, col1: 'John Doe', col2: 'Farmer', col3: 'Musanze', col4: 'Active' },
-                  { id: 2, col1: 'Jane Smith', col2: 'Teacher', col3: 'Kayonza', col4: 'Active' },
-                  { id: 3, col1: 'Peter Jones', col2: 'Student', col3: 'Huye', col4: 'Pending' },
-                  { id: 4, col1: 'Sarah M.', col2: 'Nurse', col3: 'Kigali', col4: 'Active' },
-              ];
-          default: return [];
-      }
+  const getFullMockData = (source: DataSourceType) => {
+    switch(source) {
+      case 'PROJECTS':
+        return [
+          { name: 'Clean Water Initiative', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, manager: 'Jean Bosco', startDate: '2024-01-10' },
+          { name: 'Rural Education', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, manager: 'Marie Claire', startDate: '2024-03-15' },
+          { name: 'Agri-Tech Training', location: 'Southern Prov.', status: 'At Risk', progress: 20, budget: 15000000, spent: 5000000, manager: 'Eric M.', startDate: '2025-01-05' },
+          { name: 'Health Resilience V2', location: 'Kigali City', status: 'On Track', progress: 90, budget: 120000000, spent: 110000000, manager: 'Admin', startDate: '2023-11-20' },
+        ];
+      case 'BENEFICIARIES':
+        return [
+          { name: 'John Doe', location: 'Musanze', age: '25-35', status: 'Active', gender: 'Male' },
+          { name: 'Jane Smith', location: 'Kayonza', age: '18-24', status: 'Active', gender: 'Female' },
+          { name: 'Peter Jones', location: 'Huye', age: '45+', status: 'Inactive', gender: 'Male' },
+          { name: 'Sarah M.', location: 'Kigali City', age: '25-35', status: 'Active', gender: 'Female' },
+        ];
+      default: return [];
+    }
   };
 
-  const getChartData = (source: string) => {
-      // Mock data suitable for charts
-      switch(source) {
-          case 'PROJECTS':
-              return [
-                  { name: 'Water', value: 45000000, status: 'On Track' },
-                  { name: 'Edu', value: 32000000, status: 'Delayed' },
-                  { name: 'Agri', value: 15000000, status: 'At Risk' },
-                  { name: 'Health', value: 120000000, status: 'On Track' },
-              ];
-          case 'SURVEYS':
-              return [
-                  { name: 'Baseline', value: 1204 },
-                  { name: 'Feedback', value: 0 },
-                  { name: 'Endline', value: 856 },
-              ];
-          case 'BENEFICIARIES':
-              return [
-                  { name: 'Farmers', value: 450 },
-                  { name: 'Teachers', value: 120 },
-                  { name: 'Students', value: 300 },
-                  { name: 'Health', value: 80 },
-              ];
-          default: return [];
-      }
-  };
-
-  const getColumns = (source: string) => {
-      switch(source) {
-          case 'PROJECTS': return ['Project Name', 'Location', 'Status', 'Budget (FRW)'];
-          case 'SURVEYS': return ['Survey Title', 'Status', 'Volume', 'Created Date'];
-          case 'BENEFICIARIES': return ['Name', 'Occupation', 'District', 'Status'];
-          default: return ['Column 1', 'Column 2', 'Column 3', 'Column 4'];
-      }
+  const getColumnLabel = (source: DataSourceType, key: string) => {
+    const labels: Record<string, string> = {
+      name: 'Item Name',
+      location: 'Location',
+      status: 'Status',
+      progress: 'Progress',
+      budget: 'Budget (FRW)',
+      spent: 'Actual Spent',
+      manager: 'Manager',
+      startDate: 'Start Date',
+      responseCount: 'Responses',
+      age: 'Age Group',
+      gender: 'Gender'
+    };
+    return labels[key] || key.charAt(0).toUpperCase() + key.slice(1);
   };
 
   const COLORS = ['#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
   const renderWidget = (widget: PageWidget) => {
-    const data = getMockData(widget.dataSource);
-    const chartData = getChartData(widget.dataSource);
-    const columns = getColumns(widget.dataSource);
+    const rawData = getFullMockData(widget.dataSource);
+    const selectedFields = widget.selectedFields || ['name', 'location', 'status'];
 
     return (
-      <div key={widget.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden mb-8">
-        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-           <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-             {widget.dataSource === 'PROJECTS' ? <FolderKanban size={20} className="text-indigo-600"/> : 
-              widget.dataSource === 'SURVEYS' ? <FileText size={20} className="text-blue-600"/> :
-              <Users size={20} className="text-green-600"/>}
-             {widget.title}
-           </h3>
-           <span className="text-xs font-medium text-slate-500 bg-white border border-slate-200 px-2 py-1 rounded uppercase tracking-wider">
-              Source: {widget.dataSource}
-           </span>
+      <div key={widget.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden mb-8 animate-fade-in">
+        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+           <div className="flex items-center gap-3">
+             <div className="p-2.5 bg-white border border-slate-200 text-indigo-600 rounded-xl shadow-sm">
+                {widget.dataSource === 'PROJECTS' ? <FolderKanban size={20}/> : 
+                 widget.dataSource === 'SURVEYS' ? <FileText size={20}/> :
+                 <Users size={20}/>}
+             </div>
+             <div>
+                <h3 className="font-black text-slate-800">{widget.title}</h3>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Source: {widget.dataSource}</p>
+             </div>
+           </div>
         </div>
         
-        <div className="p-6">
+        <div className="p-8">
            {widget.widgetType === 'TABLE' && (
               <div className="overflow-x-auto">
                  <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-500 font-medium">
+                    <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                         <tr>
-                           {columns.map((col, i) => <th key={i} className="px-4 py-3">{col}</th>)}
+                           {selectedFields.map((field) => (
+                             <th key={field} className="px-6 py-4">{getColumnLabel(widget.dataSource, field)}</th>
+                           ))}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {data.map((row: any) => (
-                           <tr key={row.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="px-4 py-3 font-medium text-slate-900">{row.col1}</td>
-                              <td className="px-4 py-3 text-slate-600">{row.col2}</td>
-                              <td className="px-4 py-3 text-slate-600">{row.col3}</td>
-                              <td className="px-4 py-3 text-slate-600">{row.col4}</td>
+                        {rawData.map((row: any, idx) => (
+                           <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                              {selectedFields.map((field) => (
+                                <td key={field} className="px-6 py-4">
+                                   {field === 'budget' || field === 'spent' ? (
+                                      <span className="font-mono font-bold text-slate-900">{row[field].toLocaleString()}</span>
+                                   ) : field === 'status' ? (
+                                      <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest ${row[field] === 'On Track' || row[field] === 'Active' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                        {row[field]}
+                                      </span>
+                                   ) : (
+                                      <span className="font-bold text-slate-700">{row[field]}</span>
+                                   )}
+                                </td>
+                              ))}
                            </tr>
                         ))}
                     </tbody>
@@ -118,21 +104,22 @@ const CustomPageView: React.FC<CustomPageViewProps> = ({ page }) => {
            )}
 
            {widget.widgetType === 'CARD_GRID' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {data.map((row: any) => (
-                      <div key={row.id} className="p-4 rounded-lg border border-slate-200 hover:border-indigo-300 transition-colors bg-slate-50/30">
-                          <div className="flex items-start justify-between mb-2">
-                              <div className="font-bold text-slate-900 text-lg">{row.col1}</div>
-                              {row.col3 === 'On Track' || row.col4 === 'Active' ? (
-                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                              ) : (
-                                  <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  {rawData.map((row: any, idx) => (
+                      <div key={idx} className="p-6 rounded-[2rem] border border-slate-200 hover:border-indigo-300 transition-all bg-white shadow-sm group">
+                          <div className="flex items-start justify-between mb-4">
+                              <div className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors">{row[selectedFields[0]]}</div>
+                              <div className={`w-2 h-2 rounded-full ${row.status === 'On Track' || row.status === 'Active' ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-amber-500'}`}></div>
                           </div>
-                          <div className="space-y-1 text-sm text-slate-600">
-                              <p>{columns[1]}: <span className="font-medium text-slate-800">{row.col2}</span></p>
-                              <p>{columns[2]}: <span className="font-medium text-slate-800">{row.col3}</span></p>
-                              <p className="text-xs text-slate-400 mt-2">{columns[3]}: {row.col4}</p>
+                          <div className="space-y-3">
+                              {selectedFields.slice(1).map(field => (
+                                <div key={field}>
+                                   <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">{getColumnLabel(widget.dataSource, field)}</span>
+                                   <span className="text-sm font-bold text-slate-700">
+                                      {field === 'budget' ? `RWF ${row[field].toLocaleString()}` : row[field]}
+                                   </span>
+                                </div>
+                              ))}
                           </div>
                       </div>
                   ))}
@@ -140,41 +127,45 @@ const CustomPageView: React.FC<CustomPageViewProps> = ({ page }) => {
            )}
 
            {widget.widgetType === 'CHART' && (
-               <div className="h-[300px] w-full">
+               <div className="h-[350px] w-full">
                    <ResponsiveContainer width="100%" height="100%">
                        {widget.chartType === 'BAR' ? (
-                           <BarChart data={chartData}>
-                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0"/>
-                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}}/>
-                               <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}}/>
-                               <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}/>
-                               <Bar dataKey="value" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                           <BarChart data={rawData}>
+                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                               <XAxis dataKey={selectedFields[0]} axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}/>
+                               <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}/>
+                               <Tooltip 
+                                  contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 700}}
+                                  cursor={{fill: '#f8fafc'}}
+                               />
+                               <Bar dataKey={selectedFields[selectedFields.length - 1]} fill="#4f46e5" radius={[6, 6, 0, 0]} barSize={40} />
                            </BarChart>
                        ) : widget.chartType === 'LINE' ? (
-                           <LineChart data={chartData}>
-                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0"/>
-                               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}}/>
-                               <YAxis axisLine={false} tickLine={false} tick={{fontSize: 12, fill: '#64748b'}}/>
-                               <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}/>
-                               <Line type="monotone" dataKey="value" stroke="#4f46e5" strokeWidth={2} dot={{r: 4, strokeWidth: 2}} activeDot={{r: 6}} />
+                           <LineChart data={rawData}>
+                               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9"/>
+                               <XAxis dataKey={selectedFields[0]} axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}/>
+                               <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 700, fill: '#64748b'}}/>
+                               <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 700}}/>
+                               <Line type="monotone" dataKey={selectedFields[selectedFields.length - 1]} stroke="#4f46e5" strokeWidth={4} dot={{r: 6, fill: '#fff', stroke: '#4f46e5', strokeWidth: 3}} activeDot={{r: 8}} />
                            </LineChart>
                        ) : (
                            <PieChart>
                                <Pie
-                                   data={chartData}
+                                   data={rawData}
                                    cx="50%"
                                    cy="50%"
-                                   innerRadius={60}
-                                   outerRadius={80}
-                                   paddingAngle={5}
-                                   dataKey="value"
+                                   innerRadius={80}
+                                   outerRadius={110}
+                                   paddingAngle={8}
+                                   dataKey={selectedFields[selectedFields.length - 1]}
+                                   nameKey={selectedFields[0]}
                                >
-                                   {chartData.map((entry, index) => (
-                                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                   {rawData.map((_, index) => (
+                                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                                    ))}
                                </Pie>
-                               <Tooltip contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}/>
-                               <Legend />
+                               <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontWeight: 700}}/>
+                               <Legend verticalAlign="bottom" height={36}/>
                            </PieChart>
                        )}
                    </ResponsiveContainer>
@@ -186,24 +177,27 @@ const CustomPageView: React.FC<CustomPageViewProps> = ({ page }) => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto p-6 animate-fade-in">
-       <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-             <div className="p-2 bg-indigo-600 text-white rounded-lg">
-                {page.icon === 'Layout' ? <Layout size={24} /> : <Database size={24} />}
+    <div className="max-w-7xl mx-auto p-8 animate-fade-in pb-20">
+       <div className="mb-12">
+          <div className="flex items-center gap-4 mb-4">
+             <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100/50">
+                {page.icon === 'Layout' ? <Layout size={32} /> : <Database size={32} />}
              </div>
-             <h1 className="text-3xl font-bold text-slate-900">{page.name}</h1>
+             <div>
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight">{page.name}</h1>
+                <p className="text-slate-500 font-medium text-lg mt-1">{page.description}</p>
+             </div>
           </div>
-          <p className="text-slate-500 text-lg">{page.description}</p>
        </div>
 
-       <div className="space-y-8">
+       <div className="space-y-12">
           {page.widgets.map(widget => renderWidget(widget))}
           
           {page.widgets.length === 0 && (
-              <div className="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-                  <p className="text-slate-400">This page has no content yet.</p>
-                  <p className="text-slate-400 text-xs">Go to Settings to add data sections.</p>
+              <div className="text-center py-32 bg-white rounded-[3rem] border-2 border-dashed border-slate-200">
+                  <Layout className="mx-auto text-slate-100 mb-6" size={80} />
+                  <h3 className="text-xl font-black text-slate-300 uppercase tracking-[0.2em]">Canvas is empty</h3>
+                  <p className="text-slate-300 font-bold mt-2">Map database columns in Settings to populate this page.</p>
               </div>
           )}
        </div>

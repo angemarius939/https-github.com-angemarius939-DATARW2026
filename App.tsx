@@ -88,7 +88,6 @@ const App: React.FC = () => {
   const openAdminBuilder = (section: 'pages' | 'database' | 'forms' | 'workflows') => {
     setView(ViewState.ADMIN_PANEL);
     setIsAdminActionsOpen(false);
-    // Note: AdminPanel component should receive a 'defaultSection' prop or handle navigation state
   };
 
   return (
@@ -169,7 +168,6 @@ const App: React.FC = () => {
                 </div>
              </div>
              <div className="flex items-center gap-4 relative">
-                {/* Admin Quick Edit Option */}
                 <div className="relative">
                   <button 
                     onClick={() => setIsAdminActionsOpen(!isAdminActionsOpen)}
@@ -225,10 +223,20 @@ const App: React.FC = () => {
            {view === ViewState.LANDING && <LandingPage onLogin={() => setView(ViewState.DASHBOARD_HOME)} onRegister={() => setView(ViewState.REGISTER)} />}
            {view === ViewState.REGISTER && <RegisterView onRegisterSuccess={handleRegisterSuccess} onBack={() => setView(ViewState.LANDING)} />}
            {view === ViewState.DASHBOARD_HOME && <ProjectDashboard organizationName={organizationName} projects={projects} onViewProject={(id) => {setActiveProjectId(id); setView(ViewState.PROJECTS)}} onNotify={notify} />}
-           {view === ViewState.PROJECTS && <ProjectsView initialProjects={projects} setGlobalProjects={setProjects} onNotify={notify} deepLinkProjectId={activeProjectId} clearDeepLink={() => setActiveProjectId(null)} />}
+           {view === ViewState.PROJECTS && (
+             <ProjectsView 
+                initialProjects={projects} 
+                setGlobalProjects={setProjects} 
+                onNotify={notify} 
+                deepLinkProjectId={activeProjectId} 
+                onProjectSelect={(id) => setActiveProjectId(id)}
+                clearDeepLink={() => setActiveProjectId(null)} 
+             />
+           )}
            {view === ViewState.SURVEYS && <SurveyBuilder initialSurveys={surveys} setGlobalSurveys={setSurveys} onNotify={notify} />}
            {view === ViewState.ADMIN_PANEL && (
              <AdminPanel 
+               projects={projects}
                customPages={customPages} 
                setCustomPages={setCustomPages} 
                virtualTables={virtualTables} 

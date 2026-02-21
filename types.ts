@@ -90,6 +90,14 @@ export interface ProjectIndicator {
   linkedLogframeId?: string;
 }
 
+export interface LogframeElement {
+  id: string;
+  type: 'Impact' | 'Outcome' | 'Output';
+  code: string;
+  description: string;
+  parentId?: string;
+}
+
 // Project Structures
 export interface ActivityLogEntry {
   id: string;
@@ -144,6 +152,7 @@ export interface Project {
   activities: ProjectActivity[];
   beneficiaryList: Beneficiary[];
   activityLog: ActivityLogEntry[];
+  logframe?: LogframeElement[];
 }
 
 // No-Code Platform Types
@@ -228,6 +237,11 @@ export interface PageWidget {
   widgetType: WidgetType;
   chartType?: ChartType;
   description?: string;
+  selectedFields?: string[];
+  mappingConfig?: {
+    labelField?: string;
+    valueField?: string;
+  };
 }
 
 export interface CustomPage {
@@ -239,4 +253,5 @@ export interface CustomPage {
   createdAt: string;
   createdBy: string;
   visibility: 'PUBLIC' | 'PRIVATE' | 'ROLE_BASED';
+  linkedProjectId?: string;
 }

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
-import { Settings, Layout, Plus, Trash2, Save, Database, Table, Grid, LayoutDashboard, X, FilePlus, Users, Shield, PieChart, BarChart as BarChartIcon, LineChart as LineChartIcon } from 'lucide-react';
+/* Import missing Columns icon */
+import { Settings, Layout, Plus, Trash2, Save, Database, Table, Grid, LayoutDashboard, X, FilePlus, Users, Shield, PieChart, BarChart as BarChartIcon, LineChart as LineChartIcon, Check, Columns } from 'lucide-react';
 import { CustomPage, DataSourceType, PageWidget, WidgetType, ChartType } from '../types';
 
 interface SettingsViewProps {
@@ -9,12 +10,43 @@ interface SettingsViewProps {
   onDeletePage: (pageId: string) => void;
 }
 
+const SOURCE_FIELDS: Record<DataSourceType, { key: string; label: string }[]> = {
+  PROJECTS: [
+    { key: 'name', label: 'Project Name' },
+    { key: 'location', label: 'Location' },
+    { key: 'status', label: 'Status' },
+    { key: 'progress', label: 'Progress (%)' },
+    { key: 'budget', label: 'Total Budget' },
+    { key: 'spent', label: 'Actual Spent' },
+    { key: 'manager', label: 'Lead Manager' },
+    { key: 'startDate', label: 'Launch Date' },
+  ],
+  SURVEYS: [
+    { key: 'title', label: 'Survey Title' },
+    { key: 'status', label: 'Current Status' },
+    { key: 'responseCount', label: 'Response Volume' },
+    { key: 'createdAt', label: 'Date Created' },
+  ],
+  BENEFICIARIES: [
+    { key: 'name', label: 'Full Name' },
+    { key: 'location', label: 'Primary Location' },
+    { key: 'age', label: 'Age Group' },
+    { key: 'status', label: 'Enrollment Status' },
+    { key: 'gender', label: 'Gender Identity' },
+  ],
+  LOGS: [
+    { key: 'action', label: 'Action Taken' },
+    { key: 'user', label: 'Responsible User' },
+    { key: 'timestamp', label: 'Timestamp' },
+    { key: 'details', label: 'Audit Details' },
+  ],
+  VIRTUAL_TABLE: []
+};
+
 const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, onDeletePage }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'pages' | 'users'>('pages');
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   
-  // Page Builder State
-  // Added visibility: 'PUBLIC' to initial state to comply with CustomPage type
   const [newPage, setNewPage] = useState<Partial<CustomPage>>({
     name: '',
     description: '',
@@ -27,7 +59,8 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
       id: Date.now().toString(),
       title: 'New Data Section',
       dataSource: 'PROJECTS',
-      widgetType: 'TABLE'
+      widgetType: 'TABLE',
+      selectedFields: ['name', 'location', 'status', 'budget']
     };
     setNewPage({
       ...newPage,
@@ -40,12 +73,28 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
     const updatedWidgets = [...newPage.widgets];
     updatedWidgets[index] = { ...updatedWidgets[index], [field]: value };
     
-    // Set default chart type if switching to CHART
     if (field === 'widgetType' && value === 'CHART' && !updatedWidgets[index].chartType) {
         updatedWidgets[index].chartType = 'BAR';
     }
 
+    // Default fields if data source changes
+    if (field === 'dataSource') {
+        const defaultFields = SOURCE_FIELDS[value as DataSourceType].slice(0, 4).map(f => f.key);
+        updatedWidgets[index].selectedFields = defaultFields;
+    }
+
     setNewPage({ ...newPage, widgets: updatedWidgets });
+  };
+
+  const toggleField = (widgetIndex: number, fieldKey: string) => {
+    if (!newPage.widgets) return;
+    const widget = newPage.widgets[widgetIndex];
+    const currentFields = widget.selectedFields || [];
+    const updatedFields = currentFields.includes(fieldKey)
+        ? currentFields.filter(f => f !== fieldKey)
+        : [...currentFields, fieldKey];
+    
+    updateWidget(widgetIndex, 'selectedFields', updatedFields);
   };
 
   const removeWidget = (index: number) => {
@@ -58,7 +107,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
   const handleSave = () => {
     if (!newPage.name) return;
     
-    // Fixed: Added missing 'visibility' property to comply with CustomPage interface
     const pageToSave: CustomPage = {
       id: newPage.id || Date.now().toString(),
       name: newPage.name,
@@ -90,7 +138,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
       </div>
 
       <div className="flex flex-col md:flex-row gap-8">
-        {/* Sidebar Navigation */}
         <div className="w-full md:w-64 shrink-0">
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <button 
@@ -119,7 +166,6 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
           </div>
         </div>
 
-        {/* Content Area */}
         <div className="flex-1">
           {activeTab === 'pages' && (
             <div>
@@ -187,24 +233,21 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
         </div>
       </div>
 
-      {/* Page Builder Modal */}
       {isPageModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl h-[85vh] flex flex-col animate-scale-in">
-            {/* Header */}
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col animate-scale-in">
             <div className="bg-indigo-600 p-6 flex justify-between items-center shrink-0 text-white rounded-t-2xl">
               <div>
                 <h3 className="font-bold text-xl flex items-center gap-2">
                   <FilePlus size={24} /> {newPage.id ? 'Edit Page' : 'Create New Page'}
                 </h3>
-                <p className="text-indigo-100 text-sm mt-1">Define layout and connect data sources.</p>
+                <p className="text-indigo-100 text-sm mt-1">Define layout and map database columns.</p>
               </div>
               <button onClick={() => setIsPageModalOpen(false)} className="text-indigo-100 hover:text-white bg-white/10 p-2 rounded-full hover:bg-white/20">
                 <X size={24} />
               </button>
             </div>
 
-            {/* Body */}
             <div className="flex-1 overflow-y-auto p-8 bg-slate-50">
                <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-6">
@@ -241,7 +284,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                         </button>
                      </div>
 
-                     <div className="space-y-4">
+                     <div className="space-y-6">
                         {newPage.widgets?.length === 0 && (
                           <div className="text-center p-8 border-2 border-dashed border-slate-300 rounded-xl bg-slate-100/50">
                              <p className="text-slate-400 italic">No content added. Add a section to display data.</p>
@@ -249,89 +292,116 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                         )}
                         
                         {newPage.widgets?.map((widget, idx) => (
-                           <div key={widget.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm relative group">
+                           <div key={widget.id} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative group border-l-4 border-l-indigo-500">
                               <div className="absolute top-4 right-4">
                                  <button onClick={() => removeWidget(idx)} className="text-slate-300 hover:text-red-500 p-1"><Trash2 size={18}/></button>
                               </div>
                               
-                              <h5 className="text-xs font-bold text-slate-400 uppercase mb-3">Section {idx + 1}</h5>
+                              <h5 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">Section {idx + 1} Configuration</h5>
                               
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                 <div className="col-span-1">
-                                    <label className="block text-xs font-medium text-slate-600 mb-1">Section Title</label>
-                                    <input 
-                                      type="text"
-                                      className="w-full p-2 border border-slate-300 rounded-md text-sm"
-                                      value={widget.title}
-                                      onChange={(e) => updateWidget(idx, 'title', e.target.value)}
-                                    />
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                 <div className="col-span-1 space-y-4">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-600 mb-1">Section Title</label>
+                                        <input 
+                                          type="text"
+                                          className="w-full p-2 border border-slate-300 rounded-md text-sm font-medium"
+                                          value={widget.title}
+                                          onChange={(e) => updateWidget(idx, 'title', e.target.value)}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center gap-1"><Database size={12}/> Connect Data Source</label>
+                                        <select 
+                                          className="w-full p-2 border border-slate-300 rounded-md text-sm bg-slate-50 font-bold text-indigo-600"
+                                          value={widget.dataSource}
+                                          onChange={(e) => updateWidget(idx, 'dataSource', e.target.value as DataSourceType)}
+                                        >
+                                           <option value="PROJECTS">Projects (Virtual Table)</option>
+                                           <option value="SURVEYS">Surveys Database</option>
+                                           <option value="BENEFICIARIES">Beneficiaries List</option>
+                                           <option value="LOGS">Activity Logs</option>
+                                        </select>
+                                    </div>
                                  </div>
+
                                  <div className="col-span-1">
-                                    <label className="block text-xs font-medium text-slate-600 mb-1 flex items-center gap-1"><Database size={12}/> Connect Data Source</label>
-                                    <select 
-                                      className="w-full p-2 border border-slate-300 rounded-md text-sm bg-slate-50"
-                                      value={widget.dataSource}
-                                      onChange={(e) => updateWidget(idx, 'dataSource', e.target.value as DataSourceType)}
-                                    >
-                                       <option value="PROJECTS">Projects Database</option>
-                                       <option value="SURVEYS">Surveys Database</option>
-                                       <option value="BENEFICIARIES">Beneficiaries List</option>
-                                       <option value="LOGS">Activity Logs</option>
-                                    </select>
-                                 </div>
-                                 <div className="col-span-1">
-                                    <label className="block text-xs font-medium text-slate-600 mb-1 flex items-center gap-1"><Layout size={12}/> View Type</label>
-                                    <div className="flex bg-slate-100 p-1 rounded-md">
+                                    <label className="block text-xs font-bold text-slate-600 mb-1 flex items-center gap-1"><Layout size={12}/> View Type</label>
+                                    <div className="flex bg-slate-100 p-1 rounded-md mb-4">
                                        <button 
                                          onClick={() => updateWidget(idx, 'widgetType', 'TABLE')}
                                          className={`flex-1 text-xs py-1.5 rounded flex items-center justify-center gap-1 ${widget.widgetType === 'TABLE' ? 'bg-white shadow-sm text-indigo-600 font-bold' : 'text-slate-500'}`}
                                          title="Table View"
                                        >
-                                          <Table size={14}/>
+                                          <Table size={14}/> Table
                                        </button>
                                        <button 
                                          onClick={() => updateWidget(idx, 'widgetType', 'CARD_GRID')}
                                          className={`flex-1 text-xs py-1.5 rounded flex items-center justify-center gap-1 ${widget.widgetType === 'CARD_GRID' ? 'bg-white shadow-sm text-indigo-600 font-bold' : 'text-slate-500'}`}
                                          title="Card Grid"
                                        >
-                                          <Grid size={14}/>
+                                          <Grid size={14}/> Grid
                                        </button>
                                        <button 
                                          onClick={() => updateWidget(idx, 'widgetType', 'CHART')}
                                          className={`flex-1 text-xs py-1.5 rounded flex items-center justify-center gap-1 ${widget.widgetType === 'CHART' ? 'bg-white shadow-sm text-indigo-600 font-bold' : 'text-slate-500'}`}
                                          title="Chart View"
                                        >
-                                          <PieChart size={14}/>
+                                          <PieChart size={14}/> Chart
                                        </button>
                                     </div>
-                                 </div>
-                                 
-                                 {/* Chart Options */}
-                                 {widget.widgetType === 'CHART' && (
-                                     <div className="col-span-1 md:col-span-3 mt-2 pt-3 border-t border-slate-100">
-                                         <label className="block text-xs font-bold text-slate-700 mb-2">Chart Configuration</label>
-                                         <div className="flex gap-3">
-                                             <button 
-                                                onClick={() => updateWidget(idx, 'chartType', 'BAR')}
-                                                className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 ${widget.chartType === 'BAR' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'}`}
-                                             >
-                                                 <BarChartIcon size={14}/> Bar Chart
-                                             </button>
-                                             <button 
-                                                onClick={() => updateWidget(idx, 'chartType', 'LINE')}
-                                                className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 ${widget.chartType === 'LINE' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'}`}
-                                             >
-                                                 <LineChartIcon size={14}/> Line Chart
-                                             </button>
-                                             <button 
-                                                onClick={() => updateWidget(idx, 'chartType', 'PIE')}
-                                                className={`px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-2 ${widget.chartType === 'PIE' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'}`}
-                                             >
-                                                 <PieChart size={14}/> Pie Chart
-                                             </button>
+
+                                    {widget.widgetType === 'CHART' && (
+                                         <div className="space-y-2">
+                                             <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">Chart Type</label>
+                                             <div className="flex gap-2">
+                                                 <button 
+                                                    onClick={() => updateWidget(idx, 'chartType', 'BAR')}
+                                                    className={`p-2 rounded-lg border flex-1 flex justify-center ${widget.chartType === 'BAR' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                 >
+                                                     <BarChartIcon size={16}/>
+                                                 </button>
+                                                 <button 
+                                                    onClick={() => updateWidget(idx, 'chartType', 'LINE')}
+                                                    className={`p-2 rounded-lg border flex-1 flex justify-center ${widget.chartType === 'LINE' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                 >
+                                                     <LineChartIcon size={16}/>
+                                                 </button>
+                                                 <button 
+                                                    onClick={() => updateWidget(idx, 'chartType', 'PIE')}
+                                                    className={`p-2 rounded-lg border flex-1 flex justify-center ${widget.chartType === 'PIE' ? 'bg-indigo-50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-white border-slate-200 text-slate-400'}`}
+                                                 >
+                                                     <PieChart size={16}/>
+                                                 </button>
+                                             </div>
                                          </div>
-                                     </div>
-                                 )}
+                                    )}
+                                 </div>
+
+                                 <div className="col-span-1 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                                    <label className="block text-xs font-bold text-slate-600 mb-3 flex items-center gap-1">
+                                        <Columns size={12}/> Map Database Columns
+                                    </label>
+                                    <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                                        {SOURCE_FIELDS[widget.dataSource].map(field => (
+                                            <button 
+                                                key={field.key}
+                                                onClick={() => toggleField(idx, field.key)}
+                                                className={`w-full flex items-center justify-between p-2 rounded-lg text-xs font-bold transition-all border ${
+                                                    (widget.selectedFields || []).includes(field.key) 
+                                                    ? 'bg-white border-indigo-200 text-indigo-700 shadow-sm' 
+                                                    : 'bg-transparent border-transparent text-slate-400 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                <span>{field.label}</span>
+                                                {(widget.selectedFields || []).includes(field.key) && <Check size={12} />}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <p className="text-[9px] text-slate-400 font-bold uppercase mt-3 tracking-wider">
+                                        {(widget.selectedFields || []).length} Columns selected
+                                    </p>
+                                 </div>
                               </div>
                            </div>
                         ))}
@@ -340,11 +410,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                </div>
             </div>
 
-            {/* Footer */}
-            <div className="p-6 border-t border-slate-200 bg-white rounded-b-2xl flex justify-end gap-3">
-               <button onClick={() => setIsPageModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-medium hover:bg-slate-50 rounded-lg">Cancel</button>
-               <button onClick={handleSave} className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-lg flex items-center gap-2">
-                 <Save size={18} /> Save Page
+            <div className="p-6 border-t border-slate-200 bg-white rounded-b-2xl flex justify-end gap-3 shrink-0">
+               <button onClick={() => setIsPageModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold text-sm hover:bg-slate-50 rounded-lg">Cancel</button>
+               <button onClick={handleSave} className="px-8 py-2.5 bg-indigo-600 text-white font-black text-sm uppercase tracking-widest rounded-lg hover:bg-indigo-700 shadow-lg flex items-center gap-2">
+                 <Save size={18} /> Publish Configuration
                </button>
             </div>
           </div>
