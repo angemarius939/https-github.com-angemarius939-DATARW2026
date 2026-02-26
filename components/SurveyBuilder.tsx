@@ -1,16 +1,18 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { generateSurveyFromDescription, translateSurvey } from '../services/aiService';
-import { AIHubResponse, QuestionType, Survey, ViewConfig } from '../types';
-import { Sparkles, Loader2, Plus, Trash2, Save, FileText, Calendar, BarChart2, Search, ArrowLeft, Pencil, X, CheckSquare, AlertCircle, GripVertical, Calculator, Camera, Upload, Sliders, PenTool, Image as ImageIcon } from 'lucide-react';
+import { AIHubResponse, QuestionType, Survey, ViewConfig, Project } from '../types';
+import { Sparkles, Loader2, Plus, Trash2, Save, FileText, Calendar, BarChart2, Search, ArrowLeft, Pencil, X, CheckSquare, AlertCircle, GripVertical, Calculator, Camera, Upload, Sliders, PenTool, Image as ImageIcon, FolderKanban } from 'lucide-react';
 
 interface SurveyBuilderProps {
   initialSurveys: Survey[];
   setGlobalSurveys: (s: Survey[]) => void;
   onNotify: (msg: string, type?: 'success' | 'error') => void;
+  activeProjectId: string | null;
+  projects: Project[];
 }
 
-const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobalSurveys, onNotify }) => {
+const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobalSurveys, onNotify, activeProjectId, projects }) => {
   const [prompt, setPrompt] = useState('');
   const [fileContext, setFileContext] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -24,6 +26,11 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [surveys, setSurveys] = useState<Survey[]>(initialSurveys);
+
+  const filteredSurveys = surveys.filter(s => {
+    if (!activeProjectId) return true;
+    return s.linkedProjectId === activeProjectId;
+  });
 
   useEffect(() => {
     setSurveys(initialSurveys);
@@ -96,6 +103,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
       status: 'Active',
       responseCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
+      linkedProjectId: activeProjectId || undefined,
       questions: generatedSurvey.questions.map((q, i) => ({
         id: `q-${i}`,
         text: q.text,
@@ -304,10 +312,17 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
               </tr>
            </thead>
            <tbody className="divide-y divide-slate-100 font-medium">
-              {surveys.map((s) => (
+              {filteredSurveys.map((s) => (
                  <tr key={s.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-8 py-6">
-                       <div className="font-bold text-slate-900">{s.title}</div>
+                       <div className="flex items-center gap-2">
+                          <div className="font-bold text-slate-900">{s.title}</div>
+                          {s.linkedProjectId && (
+                             <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-indigo-900 text-white px-2 py-0.5 rounded shadow-sm">
+                                <FolderKanban size={10}/> {projects.find(p => p.id === s.linkedProjectId)?.name || 'Linked Project'}
+                             </span>
+                          )}
+                       </div>
                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{s.description}</div>
                     </td>
                     <td className="px-8 py-6 text-center text-slate-500 font-mono text-xs">{s.responseCount}</td>

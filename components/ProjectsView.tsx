@@ -20,9 +20,20 @@ interface ProjectsViewProps {
   deepLinkProjectId?: string | null;
   onProjectSelect?: (id: string | null) => void;
   clearDeepLink?: () => void;
+  triggerCreate?: boolean;
+  onTriggerCreateHandled?: () => void;
 }
 
-const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects, setGlobalProjects, onNotify, deepLinkProjectId, onProjectSelect, clearDeepLink }) => {
+const ProjectsView: React.FC<ProjectsViewProps> = ({ 
+  initialProjects, 
+  setGlobalProjects, 
+  onNotify, 
+  deepLinkProjectId, 
+  onProjectSelect, 
+  clearDeepLink,
+  triggerCreate,
+  onTriggerCreateHandled
+}) => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [viewMode, setViewMode] = useState<'LIST' | 'WORKSPACE'>('LIST');
   const [activeProject, setActiveProject] = useState<Project | null>(null);
@@ -36,6 +47,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects, setGlobalP
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isLogframeModalOpen, setIsLogframeModalOpen] = useState(false);
   const [isIndicatorModalOpen, setIsIndicatorModalOpen] = useState(false);
+  const [isPostCreatePromptOpen, setIsPostCreatePromptOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   // M&E Builder States
@@ -101,6 +113,13 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects, setGlobalP
     linkedOutputId: '',
     completionPercentage: 0
   });
+
+  useEffect(() => {
+    if (triggerCreate) {
+      setIsCreateModalOpen(true);
+      onTriggerCreateHandled?.();
+    }
+  }, [triggerCreate]);
 
   useEffect(() => {
     if (deepLinkProjectId) {
@@ -185,13 +204,12 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects, setGlobalP
       setActiveProject(newProject);
       onProjectSelect?.(newProject.id);
       setViewMode('WORKSPACE');
-      setIsSetupWizardOpen(true); 
-      setWizardStep(1);
+      setIsPostCreatePromptOpen(true);
       setNewProjectData({ 
         name: '', location: '', budget: 0, startDate: new Date().toISOString().split('T')[0], manager: '',
         breakdown: { 'Personnel': 0, 'Operational': 0, 'Equipment': 0, 'Travel': 0, 'Sub-grants': 0, 'Other': 0 }
       });
-      onNotify("Project initialized. Proceed with M&E setup.", "success");
+      onNotify("Project initialized successfully.", "success");
     }, 800);
   };
 
@@ -363,6 +381,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects, setGlobalP
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    <button onClick={() => setIsCreateModalOpen(true)} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg mr-2">
+                        <Plus size={16}/>
+                        New Project
+                    </button>
                     <div className="hidden md:flex items-center gap-2 px-4 py-1.5 bg-slate-50 rounded-xl border border-slate-100 mr-4">
                        <User size={14} className="text-slate-400" />
                        <span className="text-xs font-black uppercase text-slate-500 tracking-tight">PM: {activeProject.manager}</span>
@@ -861,6 +883,72 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({ initialProjects, setGlobalP
                      </div>
                      <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
                         <button onClick={handleSaveLogframe} disabled={!logframeForm.code || !logframeForm.description} className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50">Deploy Logic Node</button>
+                     </div>
+                  </div>
+               </div>
+            )}
+
+            {/* Post-Creation Setup Prompt */}
+            {isPostCreatePromptOpen && (
+               <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 backdrop-blur-2xl bg-slate-900/40">
+                  <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in border border-slate-100">
+                     <div className="relative h-48 bg-indigo-600 flex items-center justify-center overflow-hidden">
+                        <div className="absolute inset-0 opacity-20">
+                           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+                        </div>
+                        <div className="relative z-10 flex flex-col items-center text-white">
+                           <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-4 backdrop-blur-md">
+                              <CheckCircle size={32} className="text-white" />
+                           </div>
+                           <h3 className="text-2xl font-black tracking-tight">Project Successfully Initialized</h3>
+                        </div>
+                        <Sparkles className="absolute top-8 right-8 text-indigo-300 opacity-50" size={40} />
+                        <Zap className="absolute bottom-8 left-8 text-indigo-300 opacity-50" size={40} />
+                     </div>
+
+                     <div className="p-10 space-y-8">
+                        <div className="text-center space-y-2">
+                           <p className="text-slate-500 font-medium text-lg">
+                              The operational node for <span className="text-indigo-600 font-black">"{activeProject?.name}"</span> is now live.
+                           </p>
+                           <p className="text-slate-400 text-sm">
+                              Would you like to proceed with the strategic M&E configuration now?
+                           </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center text-center gap-2">
+                              <GitGraph size={20} className="text-indigo-600" />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Results Framework</span>
+                           </div>
+                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center text-center gap-2">
+                              <Target size={20} className="text-indigo-600" />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Indicator Registry</span>
+                           </div>
+                           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex flex-col items-center text-center gap-2">
+                              <TabletSmartphone size={20} className="text-indigo-600" />
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">Digital Data Tools</span>
+                           </div>
+                        </div>
+
+                        <div className="flex flex-col gap-3 pt-4">
+                           <button 
+                              onClick={() => {
+                                 setIsPostCreatePromptOpen(false);
+                                 setIsSetupWizardOpen(true);
+                                 setWizardStep(1);
+                              }}
+                              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 group"
+                           >
+                              Launch Setup Wizard <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                           </button>
+                           <button 
+                              onClick={() => setIsPostCreatePromptOpen(false)}
+                              className="w-full py-3 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-colors"
+                           >
+                              Skip for now, go to Dashboard
+                           </button>
+                        </div>
                      </div>
                   </div>
                </div>

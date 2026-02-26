@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [dynamicForms, setDynamicForms] = useState<FormDefinition[]>([]);
 
   const [pageConfigs, setPageConfigs] = useState<PageConfigs>({});
+  const [shouldTriggerProjectCreate, setShouldTriggerProjectCreate] = useState(false);
 
   const [projects, setProjects] = useState<Project[]>([
     { id: '1', name: 'Clean Water Initiative', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [] },
@@ -104,7 +105,7 @@ const App: React.FC = () => {
              <button onClick={() => setView(ViewState.DASHBOARD_HOME)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DASHBOARD_HOME ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                <LayoutDashboard size={18} /> Dashboard
              </button>
-             <button onClick={() => setView(ViewState.PROJECTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.PROJECTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+             <button onClick={() => { setView(ViewState.PROJECTS); setActiveProjectId(null); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.PROJECTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                <FolderKanban size={18} /> Projects
              </button>
              <button onClick={() => setView(ViewState.BENEFICIARIES)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.BENEFICIARIES ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
@@ -222,7 +223,18 @@ const App: React.FC = () => {
         <div className="flex-1 overflow-y-auto custom-scrollbar">
            {view === ViewState.LANDING && <LandingPage onLogin={() => setView(ViewState.DASHBOARD_HOME)} onRegister={() => setView(ViewState.REGISTER)} />}
            {view === ViewState.REGISTER && <RegisterView onRegisterSuccess={handleRegisterSuccess} onBack={() => setView(ViewState.LANDING)} />}
-           {view === ViewState.DASHBOARD_HOME && <ProjectDashboard organizationName={organizationName} projects={projects} onViewProject={(id) => {setActiveProjectId(id); setView(ViewState.PROJECTS)}} onNotify={notify} />}
+           {view === ViewState.DASHBOARD_HOME && (
+             <ProjectDashboard 
+               organizationName={organizationName} 
+               projects={projects} 
+               onViewProject={(id) => {setActiveProjectId(id); setView(ViewState.PROJECTS)}} 
+               onInitializeProject={() => {
+                 setShouldTriggerProjectCreate(true);
+                 setView(ViewState.PROJECTS);
+               }}
+               onNotify={notify} 
+             />
+           )}
            {view === ViewState.PROJECTS && (
              <ProjectsView 
                 initialProjects={projects} 
@@ -231,9 +243,11 @@ const App: React.FC = () => {
                 deepLinkProjectId={activeProjectId} 
                 onProjectSelect={(id) => setActiveProjectId(id)}
                 clearDeepLink={() => setActiveProjectId(null)} 
-             />
+                triggerCreate={shouldTriggerProjectCreate}
+                onTriggerCreateHandled={() => setShouldTriggerProjectCreate(false)}
+              />
            )}
-           {view === ViewState.SURVEYS && <SurveyBuilder initialSurveys={surveys} setGlobalSurveys={setSurveys} onNotify={notify} />}
+           {view === ViewState.SURVEYS && <SurveyBuilder initialSurveys={surveys} setGlobalSurveys={setSurveys} onNotify={notify} activeProjectId={activeProjectId} projects={projects} />}
            {view === ViewState.ADMIN_PANEL && (
              <AdminPanel 
                projects={projects}

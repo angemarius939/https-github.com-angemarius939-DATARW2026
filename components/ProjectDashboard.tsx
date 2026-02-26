@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
-import { TrendingUp, Users, DollarSign, AlertCircle, Sparkles, Loader2, Download } from 'lucide-react';
+import { TrendingUp, Users, DollarSign, AlertCircle, Sparkles, Loader2, Download, Plus } from 'lucide-react';
 import { Project } from '../types';
 import { GoogleGenAI } from "@google/genai";
 
@@ -9,10 +9,11 @@ interface ProjectDashboardProps {
   organizationName: string;
   projects: Project[];
   onViewProject: (id: string) => void;
+  onInitializeProject: () => void;
   onNotify: (msg: string, type?: 'success' | 'error') => void;
 }
 
-const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, projects, onViewProject, onNotify }) => {
+const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, projects, onViewProject, onInitializeProject, onNotify }) => {
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
@@ -60,12 +61,20 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
           <h1 className="text-2xl font-bold text-slate-900">Dashboard Overview</h1>
           <p className="text-slate-500">Welcome back, {organizationName} Admin</p>
         </div>
-        <button 
-          onClick={() => onNotify("Full organization report is being generated. Check your email in 5 minutes.")}
-          className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 flex items-center gap-2 shadow-lg"
-        >
-          <Download size={16} /> Download Report
-        </button>
+        <div className="flex gap-3">
+          <button 
+            onClick={onInitializeProject}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-lg transition-all"
+          >
+            <Plus size={16} /> Initialize New Project
+          </button>
+          <button 
+            onClick={() => onNotify("Full organization report is being generated. Check your email in 5 minutes.")}
+            className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 flex items-center gap-2 shadow-lg"
+          >
+            <Download size={16} /> Download Report
+          </button>
+        </div>
       </div>
 
       {/* AI Hub Highlight */}
