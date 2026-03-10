@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Project, BudgetLine, ActivityLogEntry, ProjectActivity, Beneficiary, ProjectIndicator, IndicatorTarget, LogframeElement, Survey } from '../types';
+import ProjectDetailView from './ProjectDetailView';
 import { 
   FolderKanban, Plus, Search, Filter, MoreVertical, 
   X, Trash2, Calendar, Users, DollarSign, Layout, 
@@ -35,7 +36,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   onTriggerCreateHandled
 }) => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
-  const [viewMode, setViewMode] = useState<'LIST' | 'WORKSPACE'>('LIST');
+  const [viewMode, setViewMode] = useState<'LIST' | 'WORKSPACE' | 'DETAIL'>('LIST');
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD'>('LIST');
@@ -47,6 +48,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isLogframeModalOpen, setIsLogframeModalOpen] = useState(false);
   const [isIndicatorModalOpen, setIsIndicatorModalOpen] = useState(false);
+  const [editingIndicatorId, setEditingIndicatorId] = useState<string | null>(null);
   const [isPostCreatePromptOpen, setIsPostCreatePromptOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -73,6 +75,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Planning states
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'All' | 'On Track' | 'Delayed' | 'At Risk'>('All');
+  const [filterLocation, setFilterLocation] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Settings Form State
@@ -147,6 +150,11 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     });
     setViewMode('WORKSPACE');
     setActiveTab('overview');
+  };
+
+  const openProjectDetail = (project: Project) => {
+    setActiveProject(project);
+    setViewMode('DETAIL');
   };
 
   const handleCreateProject = () => {
@@ -291,26 +299,58 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     onNotify("Theory of Change updated");
   };
 
+  const handleOpenIndicatorModal = (indicator?: ProjectIndicator) => {
+    if (indicator) {
+      setEditingIndicatorId(indicator.id);
+      setIndicatorForm(indicator);
+    } else {
+      setEditingIndicatorId(null);
+      setIndicatorForm({
+        code: '',
+        name: '',
+        level: 'Output',
+        unit: '',
+        frequency: 'Monthly',
+        overallTarget: 0,
+        baseline: 0,
+        dataSource: '',
+        responsible: ''
+      });
+    }
+    setIsIndicatorModalOpen(true);
+  };
+
   const handleSaveIndicator = () => {
     if (!activeProject || !indicatorForm.name || !indicatorForm.code) return;
-    const newIndicator: ProjectIndicator = {
-        id: 'ind-' + Date.now(),
-        ...indicatorForm as any,
-        achieved: 0,
-        periodicData: []
-    };
+    
+    let updatedIndicators = [...(activeProject.indicators || [])];
+    
+    if (editingIndicatorId) {
+      updatedIndicators = updatedIndicators.map(ind => 
+        ind.id === editingIndicatorId ? { ...ind, ...indicatorForm } as ProjectIndicator : ind
+      );
+    } else {
+      const newIndicator: ProjectIndicator = {
+          id: 'ind-' + Date.now(),
+          ...indicatorForm as any,
+          achieved: 0,
+          periodicData: []
+      };
+      updatedIndicators.push(newIndicator);
+    }
+
     const updatedProject = {
         ...activeProject,
-        indicators: [...(activeProject.indicators || []), newIndicator],
+        indicators: updatedIndicators,
         activityLog: [
-            { id: 'l-' + Date.now(), action: 'Indicator Defined', details: `KPI ${indicatorForm.code} added to registry.`, timestamp: new Date().toISOString(), user: 'Admin' },
+            { id: 'l-' + Date.now(), action: editingIndicatorId ? 'Indicator Updated' : 'Indicator Defined', details: `KPI ${indicatorForm.code} ${editingIndicatorId ? 'modified' : 'added'} in registry.`, timestamp: new Date().toISOString(), user: 'Admin' },
             ...(activeProject.activityLog || [])
         ]
     };
     setActiveProject(updatedProject);
     setProjects(projects.map(p => p.id === activeProject.id ? updatedProject : p));
     setIsIndicatorModalOpen(false);
-    onNotify("Indicator registered successfully");
+    onNotify(editingIndicatorId ? "Indicator updated successfully" : "Indicator registered successfully");
   };
 
   const handleUpdateSettings = () => {
@@ -352,14 +392,31 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     }
   };
 
+  const uniqueLocations = useMemo(() => {
+    const locations = projects.map(p => p.location).filter(Boolean);
+    return ['All', ...Array.from(new Set(locations))];
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
     return projects.filter(project => {
         const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                              project.location.toLowerCase().includes(searchQuery.toLowerCase());
+                              project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              project.manager.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = filterStatus === 'All' || project.status === filterStatus;
-        return matchesSearch && matchesStatus;
+        const matchesLocation = filterLocation === 'All' || project.location === filterLocation;
+        return matchesSearch && matchesStatus && matchesLocation;
     });
-  }, [projects, searchQuery, filterStatus]);
+  }, [projects, searchQuery, filterStatus, filterLocation]);
+
+  if (viewMode === 'DETAIL' && activeProject) {
+    return (
+      <ProjectDetailView 
+        project={activeProject} 
+        onBack={() => { setViewMode('LIST'); setActiveProject(null); }}
+        onOpenWorkspace={openWorkspace}
+      />
+    );
+  }
 
   if (viewMode === 'WORKSPACE' && activeProject) {
       return (
@@ -450,6 +507,51 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                    </div>
                                 </div>
                                 <Layers className="absolute -bottom-12 -right-12 opacity-5" size={320} />
+                             </div>
+
+                             {/* Quick Actions */}
+                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                                   <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                      <Target size={28} />
+                                   </div>
+                                   <h4 className="text-xl font-black text-slate-900 mb-2">New M&E Indicator</h4>
+                                   <p className="text-sm text-slate-500 font-medium mb-6">Define a new metric to track project performance and impact.</p>
+                                   <button 
+                                      onClick={() => handleOpenIndicatorModal()}
+                                      className="w-full py-3 bg-indigo-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                                   >
+                                      <Plus size={16} /> Create Indicator
+                                   </button>
+                                </div>
+
+                                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                                   <div className="w-14 h-14 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                      <CheckSquare size={28} />
+                                   </div>
+                                   <h4 className="text-xl font-black text-slate-900 mb-2">Deploy Task</h4>
+                                   <p className="text-sm text-slate-500 font-medium mb-6">Add a new activity to the work plan and assign a lead officer.</p>
+                                   <button 
+                                      onClick={() => handleOpenActivityModal()}
+                                      className="w-full py-3 bg-green-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-green-700 transition-all flex items-center justify-center gap-2"
+                                   >
+                                      <Plus size={16} /> Add Activity
+                                   </button>
+                                </div>
+
+                                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
+                                   <div className="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                                      <GitGraph size={28} />
+                                   </div>
+                                   <h4 className="text-xl font-black text-slate-900 mb-2">Logic Node</h4>
+                                   <p className="text-sm text-slate-500 font-medium mb-6">Expand the Results Framework with new outcomes or outputs.</p>
+                                   <button 
+                                      onClick={() => { setLogframeForm({ type: 'Outcome' }); setIsLogframeModalOpen(true); }}
+                                      className="w-full py-3 bg-amber-600 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-lg hover:bg-amber-700 transition-all flex items-center justify-center gap-2"
+                                   >
+                                      <Plus size={16} /> Add Logic
+                                   </button>
+                                </div>
                              </div>
                         </div>
                     )}
@@ -612,7 +714,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">Indicator Performance Registry</h3>
                                  <p className="text-slate-500 font-medium">Standardized measurement framework linked to strategic outcomes.</p>
                               </div>
-                              <button onClick={() => { setIndicatorForm({}); setIsIndicatorModalOpen(true); }} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
+                              <button onClick={() => handleOpenIndicatorModal()} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
                                  <Plus size={18}/> New Metric
                               </button>
                            </div>
@@ -625,6 +727,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                        <th className="px-8 py-5">Logical Link</th>
                                        <th className="px-8 py-5 text-right">Baseline / Target</th>
                                        <th className="px-8 py-5 text-right">Actual</th>
+                                       <th className="px-8 py-5 text-right">Actions</th>
                                     </tr>
                                  </thead>
                                  <tbody className="divide-y divide-slate-50 font-medium">
@@ -635,7 +738,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                                <td className="px-8 py-5">
                                                   <p className="font-mono text-[10px] font-bold text-indigo-600 mb-0.5">{ind.code}</p>
                                                   <p className="font-bold text-slate-900">{ind.name}</p>
-                                                  <span className="text-[9px] font-black uppercase text-slate-400 mt-1 block">{ind.level}</span>
+                                                  <div className="flex items-center gap-2 mt-1">
+                                                     <span className="text-[9px] font-black uppercase text-slate-400">{ind.level}</span>
+                                                     <span className="text-[9px] font-black uppercase text-indigo-400 bg-indigo-50 px-1.5 py-0.5 rounded">{ind.frequency}</span>
+                                                  </div>
                                                </td>
                                                <td className="px-8 py-5">
                                                   {logNode ? (
@@ -645,15 +751,20 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                                   )}
                                                </td>
                                                <td className="px-8 py-5 text-right">
-                                                   <p className="text-xs text-slate-400">{ind.baseline}</p>
+                                                   <p className="text-xs text-slate-400">Baseline: {ind.baseline}</p>
                                                    <p className="font-black text-slate-900">{ind.overallTarget} {ind.unit}</p>
                                                </td>
-                                               <td className="px-8 py-5 text-right font-black text-indigo-600">{ind.achieved}</td>
+                                               <td className="px-8 py-5 text-right font-black text-indigo-600">{ind.achieved} {ind.unit}</td>
+                                               <td className="px-8 py-5 text-right">
+                                                  <button onClick={() => handleOpenIndicatorModal(ind)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                                                     <Pencil size={16} />
+                                                  </button>
+                                               </td>
                                             </tr>
                                         );
                                     })}
                                     {(activeProject.indicators || []).length === 0 && (
-                                        <tr><td colSpan={4} className="py-20 text-center text-slate-400 italic">No indicators registered. Build your framework first.</td></tr>
+                                        <tr><td colSpan={5} className="py-20 text-center text-slate-400 italic">No indicators registered. Build your framework first.</td></tr>
                                     )}
                                  </tbody>
                               </table>
@@ -1171,7 +1282,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
                   <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
                      <div className="p-8 bg-indigo-600 text-white flex justify-between items-center">
-                        <h3 className="text-2xl font-black tracking-tight">Define KPI Metric</h3>
+                        <h3 className="text-2xl font-black tracking-tight">{editingIndicatorId ? 'Update KPI Metric' : 'Define KPI Metric'}</h3>
                         <button onClick={() => setIsIndicatorModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
                      </div>
                      <div className="p-8 space-y-6">
@@ -1191,13 +1302,19 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                 <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="e.g. Percentage" value={indicatorForm.unit} onChange={e => setIndicatorForm({...indicatorForm, unit: e.target.value})} />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Target Value</label>
-                                <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={indicatorForm.overallTarget} onChange={e => setIndicatorForm({...indicatorForm, overallTarget: Number(e.target.value)})} />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Frequency</label>
+                                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={indicatorForm.frequency} onChange={e => setIndicatorForm({...indicatorForm, frequency: e.target.value as any})}>
+                                    <option value="Monthly">Monthly</option>
+                                    <option value="Quarterly">Quarterly</option>
+                                    <option value="Annually">Annually</option>
+                                 </select>
                             </div>
                         </div>
                      </div>
                      <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
-                        <button onClick={handleSaveIndicator} className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl">Deploy Indicator</button>
+                        <button onClick={handleSaveIndicator} className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl">
+                            {editingIndicatorId ? 'Update Indicator' : 'Deploy Indicator'}
+                         </button>
                      </div>
                   </div>
                </div>
@@ -1243,11 +1360,35 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
               <option value="At Risk">At Risk</option>
            </select>
         </div>
+        <div className="flex items-center gap-2 px-6 py-2 bg-slate-50 border-none rounded-2xl">
+           <MapPin size={18} className="text-slate-400" />
+           <select 
+             className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer pr-4"
+             value={filterLocation}
+             onChange={(e) => setFilterLocation(e.target.value)}
+           >
+              {uniqueLocations.map(loc => (
+                <option key={loc} value={loc}>{loc === 'All' ? 'All Locations' : loc}</option>
+              ))}
+           </select>
+        </div>
+        {(searchQuery || filterStatus !== 'All' || filterLocation !== 'All') && (
+          <button 
+            onClick={() => {
+              setSearchQuery('');
+              setFilterStatus('All');
+              setFilterLocation('All');
+            }}
+            className="flex items-center gap-2 px-6 py-2 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all"
+          >
+            <X size={16} /> Reset
+          </button>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
         {filteredProjects.map(project => (
-          <div key={project.id} onClick={() => openWorkspace(project)} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group cursor-pointer relative overflow-hidden flex flex-col h-full">
+          <div key={project.id} onClick={() => openProjectDetail(project)} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group cursor-pointer relative overflow-hidden flex flex-col h-full">
             <div className="p-8 flex-1">
               <div className="flex justify-between items-start mb-8">
                 <div className="flex items-center gap-4">

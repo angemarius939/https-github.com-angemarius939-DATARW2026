@@ -33,6 +33,16 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
   const totalBudget = projects.reduce((sum, p) => sum + (p.budget || 0), 0);
   const totalBeneficiaries = projects.reduce((sum, p) => sum + (p.beneficiaries || 0), 0);
 
+  // Mock M&E Trend Data
+  const meTrendData = [
+    { month: 'Jan', reach: 1200, impact: 72 },
+    { month: 'Feb', reach: 2100, impact: 75 },
+    { month: 'Mar', reach: 3500, impact: 78 },
+    { month: 'Apr', reach: 4200, impact: 82 },
+    { month: 'May', reach: 5800, impact: 85 },
+    { month: 'Jun', reach: 7200, impact: 88 },
+  ];
+
   const fetchAIInsight = async () => {
     setIsAiLoading(true);
     try {
@@ -205,6 +215,54 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
                  <span className="font-bold text-slate-900">{s.value}</span>
                </div>
              ))}
+          </div>
+        </div>
+      </div>
+
+      {/* M&E Specific Insights Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-slate-900">Beneficiary Reach Trend</h3>
+            <div className="flex items-center gap-2 text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">
+              <TrendingUp size={12} /> +24% Growth
+            </div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={meTrendData}>
+                <CartesianGrid vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                <Bar dataKey="reach" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-bold text-slate-900">Impact Quality Score</h3>
+            <div className="flex items-center gap-2 text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">
+              <Sparkles size={12} /> High Reliability
+            </div>
+          </div>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={meTrendData}>
+                <defs>
+                  <linearGradient id="colorImpact" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#4f46e5" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} />
+                <Tooltip contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}} />
+                <Area type="monotone" dataKey="impact" stroke="#4f46e5" strokeWidth={3} fillOpacity={1} fill="url(#colorImpact)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>

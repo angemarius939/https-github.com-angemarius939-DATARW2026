@@ -274,7 +274,7 @@ const App: React.FC = () => {
              />
            )}
            {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} />}
-           {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={() => {}} />}
+           {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={() => {}} />}
            {view === ViewState.TEAM && <TeamView onNotify={notify} />}
            {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages([...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} />}
            {view === ViewState.CUSTOM_PAGE && activeCustomPage && <CustomPageView page={activeCustomPage} />}

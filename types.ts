@@ -217,6 +217,7 @@ export type PageConfigs = Record<string, Record<string, ViewConfig>>;
 export interface AIHubResponse {
   surveyTitle: string;
   surveyDescription: string;
+  linkedProjectId?: string;
   questions: {
     text: string;
     type: string;

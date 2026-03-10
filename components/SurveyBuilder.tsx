@@ -57,7 +57,10 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
     setEditingSurveyId(null);
     try {
       const result = await generateSurveyFromDescription(prompt, fileContext || undefined);
-      setGeneratedSurvey(result);
+      setGeneratedSurvey({
+        ...result,
+        linkedProjectId: activeProjectId || undefined
+      });
     } catch (err) {
       setError("Failed to generate survey. Please try again.");
     } finally {
@@ -84,6 +87,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
     setGeneratedSurvey({
       surveyTitle: survey.title,
       surveyDescription: survey.description,
+      linkedProjectId: survey.linkedProjectId,
       questions: survey.questions ? survey.questions.map(q => ({
         text: q.text,
         type: q.type,
@@ -96,6 +100,9 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
 
   const handleSave = () => {
     if (!generatedSurvey) return;
+    
+    const finalProjectId = generatedSurvey.linkedProjectId || activeProjectId;
+
     const newSurvey: Survey = {
       id: editingSurveyId || Date.now().toString(),
       title: generatedSurvey.surveyTitle,
@@ -103,7 +110,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
       status: 'Active',
       responseCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
-      linkedProjectId: activeProjectId || undefined,
+      linkedProjectId: finalProjectId || undefined,
       questions: generatedSurvey.questions.map((q, i) => ({
         id: `q-${i}`,
         text: q.text,
@@ -153,6 +160,27 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
               onChange={(e) => setGeneratedSurvey({...generatedSurvey, surveyDescription: e.target.value})}
               className="text-slate-500 bg-transparent border-none focus:outline-none w-full text-sm resize-none"
             />
+            
+            <div className="mt-6 pt-6 border-t border-slate-100 flex items-center gap-4">
+               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <FolderKanban size={14} /> Associated Project
+               </div>
+               <select 
+                  className="flex-1 max-w-xs p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={generatedSurvey.linkedProjectId || ''}
+                  onChange={(e) => setGeneratedSurvey({...generatedSurvey, linkedProjectId: e.target.value || undefined})}
+               >
+                  <option value="">-- No Project Association --</option>
+                  {projects.map(p => (
+                     <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+               </select>
+               {activeProjectId && !generatedSurvey.linkedProjectId && (
+                  <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
+                     Context: {projects.find(p => p.id === activeProjectId)?.name}
+                  </span>
+               )}
+            </div>
           </div>
           <div className="p-8 space-y-6">
             {generatedSurvey.questions.map((q, idx) => (
@@ -259,8 +287,15 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-8 animate-fade-in">
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8">
-        <div className="flex items-center gap-2 text-indigo-600 mb-4 font-black uppercase text-xs tracking-widest">
-           <Sparkles size={16} /> AI HUB
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2 text-indigo-600 font-black uppercase text-xs tracking-widest">
+            <Sparkles size={16} /> AI HUB
+          </div>
+          {activeProjectId && (
+            <div className="flex items-center gap-2 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-indigo-100">
+               <FolderKanban size={12} /> Context: {projects.find(p => p.id === activeProjectId)?.name || 'Active Project'}
+            </div>
+          )}
         </div>
         <h2 className="text-3xl font-black text-slate-900 mb-2">Create Data Collection Tool</h2>
         <p className="text-slate-500 mb-8 max-w-2xl">Describe your project requirements and let our AI Builder build a culturally relevant, multi-lingual survey for you.</p>
