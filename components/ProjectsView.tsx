@@ -10,9 +10,10 @@ import {
   UserPlus, UserCheck, GraduationCap, Home, Archive, Copy, AlertOctagon, Download, MapPin, Loader2, User,
   Trophy, ClipboardCheck, BarChart3, ChevronDown, Layers, Link2, Info, TrendingUp, Briefcase, ExternalLink,
   ShieldCheck, Zap, LineChart, Network, GitGraph, BookOpen, TreePalm, GitBranch, HardDrive, Folder, UploadCloud,
-  GanttChartSquare, ClipboardList, TabletSmartphone, PieChart, Binary, LayoutGrid, ListTodo, Sparkles, Shield,
+  GanttChartSquare, ClipboardList, TabletSmartphone, PieChart as PieChartIcon, Binary, LayoutGrid, ListTodo, Sparkles, Shield,
   ArrowLeftRight, Settings2, Lightbulb, Clipboard, Calculator, GitMerge, TreeDeciduous
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -507,6 +508,46 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                    </div>
                                 </div>
                                 <Layers className="absolute -bottom-12 -right-12 opacity-5" size={320} />
+                             </div>
+
+                             {/* Budget Breakdown Chart */}
+                             <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                                <h4 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+                                   <PieChartIcon className="text-indigo-600" size={24} /> Budget Breakdown
+                                </h4>
+                                {activeProject.budgetLines && activeProject.budgetLines.length > 0 ? (
+                                   <div className="h-[300px] w-full">
+                                      <ResponsiveContainer width="100%" height="100%">
+                                         <PieChart>
+                                            <Pie
+                                               data={activeProject.budgetLines}
+                                               dataKey="allocated"
+                                               nameKey="category"
+                                               cx="50%"
+                                               cy="50%"
+                                               outerRadius={100}
+                                               innerRadius={60}
+                                               paddingAngle={5}
+                                               label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                            >
+                                               {activeProject.budgetLines.map((entry, index) => {
+                                                  const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316'];
+                                                  return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                                               })}
+                                            </Pie>
+                                            <Tooltip 
+                                               formatter={(value: number) => `RWF ${value.toLocaleString()}`}
+                                            />
+                                            <Legend />
+                                         </PieChart>
+                                      </ResponsiveContainer>
+                                   </div>
+                                ) : (
+                                   <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                      <PieChartIcon size={48} className="mx-auto text-slate-300 mb-4" />
+                                      <p className="text-slate-500 font-medium">No budget breakdown available.</p>
+                                   </div>
+                                )}
                              </div>
 
                              {/* Quick Actions */}

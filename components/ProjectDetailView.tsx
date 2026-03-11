@@ -3,8 +3,10 @@ import { Project, ProjectActivity } from '../types';
 import { 
   ArrowLeft, FolderKanban, Calendar, Users, DollarSign, 
   MapPin, CheckCircle, Target, Activity, Clock, User,
-  List, LayoutGrid, AlertTriangle, CheckSquare, X
+  List, LayoutGrid, AlertTriangle, CheckSquare, X,
+  PieChart as PieChartIcon
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ProjectDetailViewProps {
   project: Project;
@@ -213,27 +215,57 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
             {/* Budget Breakdown */}
             <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
               <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
-                <DollarSign className="text-indigo-600" size={20} /> Budget Allocation
+                <PieChartIcon className="text-indigo-600" size={20} /> Budget Allocation
               </h4>
-              <div className="space-y-4">
-                {project.budgetLines?.map((line) => {
-                  const percent = project.budget > 0 ? Math.round((line.allocated / project.budget) * 100) : 0;
-                  return (
-                    <div key={line.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-bold text-slate-700 text-sm">{line.category}</span>
-                        <span className="font-black text-slate-900 text-sm">{(line.allocated / 1000000).toFixed(1)}M RWF</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                          <div className="h-full bg-indigo-400 rounded-full" style={{width: `${percent}%`}}></div>
-                        </div>
-                        <span className="text-[10px] font-black text-slate-400 w-8 text-right">{percent}%</span>
-                      </div>
+              <div className="space-y-6">
+                {project.budgetLines && project.budgetLines.length > 0 ? (
+                  <>
+                    <div className="h-[250px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={project.budgetLines}
+                            dataKey="allocated"
+                            nameKey="category"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            innerRadius={50}
+                            paddingAngle={5}
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          >
+                            {project.budgetLines.map((entry, index) => {
+                              const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316'];
+                              return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
+                            })}
+                          </Pie>
+                          <Tooltip 
+                            formatter={(value: number) => `RWF ${value.toLocaleString()}`}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  );
-                })}
-                {(!project.budgetLines || project.budgetLines.length === 0) && (
+                    <div className="space-y-4">
+                      {project.budgetLines.map((line) => {
+                        const percent = project.budget > 0 ? Math.round((line.allocated / project.budget) * 100) : 0;
+                        return (
+                          <div key={line.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="font-bold text-slate-700 text-sm">{line.category}</span>
+                              <span className="font-black text-slate-900 text-sm">{(line.allocated / 1000000).toFixed(1)}M RWF</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                <div className="h-full bg-indigo-400 rounded-full" style={{width: `${percent}%`}}></div>
+                              </div>
+                              <span className="text-[10px] font-black text-slate-400 w-8 text-right">{percent}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
                   <p className="text-sm text-slate-500 italic text-center py-4">No budget breakdown available.</p>
                 )}
               </div>
