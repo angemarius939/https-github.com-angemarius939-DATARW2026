@@ -283,7 +283,7 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
       {/* Profile Registration Modal */}
       {isRegisterModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
-           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in">
+           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl flex flex-col max-h-[90vh] overflow-hidden animate-scale-in">
               <div className="p-8 bg-indigo-600 text-white flex justify-between items-center shrink-0">
                  <div>
                     <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
@@ -294,7 +294,7 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                  <button onClick={() => setIsRegisterModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
               </div>
 
-              <div className="p-10 max-h-[70vh] overflow-y-auto custom-scrollbar space-y-8">
+              <div className="p-10 overflow-y-auto custom-scrollbar space-y-8 flex-1">
                  {/* Project Context Reminder */}
                  <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-3xl flex items-center gap-4">
                     <div className="w-10 h-10 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600">
@@ -330,73 +330,79 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                  </div>
 
                  {/* Vital Stats */}
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Gender</label>
-                       <select 
-                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest" 
-                          value={newBen.gender} 
-                          onChange={(e) => setNewBen({...newBen, gender: e.target.value as any})}
-                       >
-                          <option value="Male">Male</option>
-                          <option value="Female">Female</option>
-                          <option value="Other">Other</option>
-                       </select>
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Age</label>
-                       <input 
-                          type="number" 
-                          placeholder="Years" 
-                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
-                          value={newBen.age || ''} 
-                          onChange={(e) => setNewBen({...newBen, age: Number(e.target.value)})} 
-                       />
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">HH Size</label>
-                       <input 
-                          type="number" 
-                          placeholder="Members" 
-                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
-                          value={newBen.householdSize || ''} 
-                          onChange={(e) => setNewBen({...newBen, householdSize: Number(e.target.value)})} 
-                       />
+                 <div className="space-y-5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Vital Statistics</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Gender</label>
+                          <select 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xs uppercase tracking-widest" 
+                             value={newBen.gender} 
+                             onChange={(e) => setNewBen({...newBen, gender: e.target.value as any})}
+                          >
+                             <option value="Male">Male</option>
+                             <option value="Female">Female</option>
+                             <option value="Other">Other</option>
+                          </select>
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Age</label>
+                          <input 
+                             type="number" 
+                             placeholder="Years" 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
+                             value={newBen.age || ''} 
+                             onChange={(e) => setNewBen({...newBen, age: Number(e.target.value)})} 
+                          />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">HH Size</label>
+                          <input 
+                             type="number" 
+                             placeholder="Members" 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
+                             value={newBen.householdSize || ''} 
+                             onChange={(e) => setNewBen({...newBen, householdSize: Number(e.target.value)})} 
+                          />
+                       </div>
                     </div>
                  </div>
 
                  {/* Social Context */}
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">District / Province</label>
-                       <select 
-                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                          value={newBen.location} 
-                          onChange={(e) => setNewBen({...newBen, location: e.target.value})}
-                       >
-                          <option value="Kigali City">Kigali City</option>
-                          <option value="Musanze">Musanze</option>
-                          <option value="Gasabo">Gasabo</option>
-                          <option value="Kicukiro">Kicukiro</option>
-                          <option value="Nyarugenge">Nyarugenge</option>
-                          <option value="Huye">Huye</option>
-                          <option value="Kayonza">Kayonza</option>
-                          <option value="Rubavu">Rubavu</option>
-                       </select>
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Education Level</label>
-                       <select 
-                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                          value={newBen.educationLevel} 
-                          onChange={(e) => setNewBen({...newBen, educationLevel: e.target.value as any})}
-                       >
-                          <option value="None">No Formal Education</option>
-                          <option value="Primary">Primary Education</option>
-                          <option value="Secondary">Secondary Education</option>
-                          <option value="TVET">TVET / Technical</option>
-                          <option value="University">University / Higher</option>
-                       </select>
+                 <div className="space-y-5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Social Context</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">District / Province</label>
+                          <select 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                             value={newBen.location} 
+                             onChange={(e) => setNewBen({...newBen, location: e.target.value})}
+                          >
+                             <option value="Kigali City">Kigali City</option>
+                             <option value="Musanze">Musanze</option>
+                             <option value="Gasabo">Gasabo</option>
+                             <option value="Kicukiro">Kicukiro</option>
+                             <option value="Nyarugenge">Nyarugenge</option>
+                             <option value="Huye">Huye</option>
+                             <option value="Kayonza">Kayonza</option>
+                             <option value="Rubavu">Rubavu</option>
+                          </select>
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Education Level</label>
+                          <select 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                             value={newBen.educationLevel} 
+                             onChange={(e) => setNewBen({...newBen, educationLevel: e.target.value as any})}
+                          >
+                             <option value="None">No Formal Education</option>
+                             <option value="Primary">Primary Education</option>
+                             <option value="Secondary">Secondary Education</option>
+                             <option value="TVET">TVET / Technical</option>
+                             <option value="University">University / Higher</option>
+                          </select>
+                       </div>
                     </div>
                  </div>
               </div>

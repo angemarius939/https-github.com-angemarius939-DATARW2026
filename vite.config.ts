@@ -22,6 +22,27 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        chunkSizeWarningLimit: 1500,
+        rollupOptions: {
+          output: {
+            manualChunks(id) {
+              if (id.includes('node_modules')) {
+                if (id.includes('recharts')) {
+                  return 'vendor-recharts';
+                }
+                if (id.includes('lucide-react')) {
+                  return 'vendor-lucide';
+                }
+                if (id.includes('react') || id.includes('react-dom')) {
+                  return 'vendor-react';
+                }
+                return 'vendor';
+              }
+            }
+          }
+        }
       }
     };
 });
