@@ -4,7 +4,7 @@ import {
   ArrowLeft, FolderKanban, Calendar, Users, DollarSign, 
   MapPin, CheckCircle, Target, Activity, Clock, User,
   List, LayoutGrid, AlertTriangle, CheckSquare, X,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon, LineChart
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -12,9 +12,10 @@ interface ProjectDetailViewProps {
   project: Project;
   onBack: () => void;
   onOpenWorkspace: (project: Project) => void;
+  onNavigateToAnalysis?: (projectId: string) => void;
 }
 
-const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, onOpenWorkspace }) => {
+const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, onOpenWorkspace, onNavigateToAnalysis }) => {
   const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD'>('LIST');
 
   const getActivityStatusColor = (status: string) => {
@@ -58,6 +59,15 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
           </div>
         </div>
         <div className="flex gap-2">
+          {onNavigateToAnalysis && (
+            <button 
+              onClick={() => onNavigateToAnalysis(project.id)} 
+              className="bg-white border border-slate-200 text-slate-700 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm"
+            >
+              <LineChart size={18} />
+              Data Analysis
+            </button>
+          )}
           <button 
             onClick={() => onOpenWorkspace(project)} 
             className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
@@ -74,13 +84,18 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
           <div className="bg-white rounded-[2.5rem] p-10 border border-slate-200 shadow-sm relative overflow-hidden">
             <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12">
               <div>
-                <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${project.status === 'On Track' ? 'bg-green-100 text-green-700' : project.status === 'Delayed' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
                     {project.status}
                   </span>
                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
                     <MapPin size={12} /> {project.location}
                   </span>
+                  {project.thematicAreas && project.thematicAreas.map(area => (
+                    <span key={area} className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-indigo-50 text-indigo-600 border border-indigo-100">
+                      {area}
+                    </span>
+                  ))}
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 mb-4 leading-tight">{project.name}</h3>
                 <p className="text-slate-500 font-medium mb-8">
@@ -137,10 +152,24 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
                 </div>
               </div>
             </div>
+
+            {project.customFields && Object.keys(project.customFields).length > 0 && (
+              <div className="mt-8 pt-8 border-t border-slate-100 relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Custom Attributes</p>
+                <div className="flex flex-wrap gap-6">
+                  {Object.entries(project.customFields).map(([key, value]) => (
+                    <div key={key}>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{key}</p>
+                      <p className="font-bold text-slate-900">{String(value)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
               <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
                 <Users size={24} />
@@ -170,7 +199,34 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
             </div>
             <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
               <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center shrink-0">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Risks</p>
+                <p className="text-2xl font-black text-slate-900">{project.risks?.length || 0}</p>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                 <Activity size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Interventions</p>
+                <p className="text-2xl font-black text-slate-900">{project.interventions?.length || 0}</p>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center shrink-0">
+                <Users size={24} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Partners</p>
+                <p className="text-2xl font-black text-slate-900">{project.partners?.length || 0}</p>
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex items-center gap-4">
+              <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center shrink-0">
+                <Clock size={24} />
               </div>
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Log Entries</p>
@@ -416,6 +472,109 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
               </div>
             )}
           </div>
+
+          {/* Interventions Section */}
+          {project.interventions && project.interventions.length > 0 && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+              <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                <Activity className="text-indigo-600" size={20} /> Project Interventions
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {project.interventions.map(intervention => (
+                  <div key={intervention.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h5 className="font-bold text-slate-900">{intervention.name}</h5>
+                        <p className="text-xs text-slate-500 mt-1">{intervention.type} • {intervention.targetDemographic}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded-lg text-[10px] font-bold ${
+                        intervention.status === 'Active' ? 'bg-emerald-100 text-emerald-700' :
+                        intervention.status === 'Completed' ? 'bg-blue-100 text-blue-700' :
+                        intervention.status === 'Suspended' ? 'bg-red-100 text-red-700' :
+                        'bg-slate-200 text-slate-700'
+                      }`}>
+                        {intervention.status}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-600 mb-4">{intervention.description}</p>
+                    <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Budget</p>
+                        <p className="font-bold text-slate-900">RWF {(intervention.budgetAllocated / 1000000).toFixed(1)}M</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reached</p>
+                        <p className="font-bold text-slate-900">{intervention.beneficiariesReached.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Risks Section */}
+          {project.risks && project.risks.length > 0 && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+              <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                <AlertTriangle className="text-indigo-600" size={20} /> Risk Register
+              </h4>
+              <div className="space-y-4">
+                {project.risks.map(risk => (
+                  <div key={risk.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                          risk.impact === 'High' ? 'bg-red-100 text-red-700' :
+                          risk.impact === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                          'bg-emerald-100 text-emerald-700'
+                        }`}>
+                          {risk.impact} Impact
+                        </span>
+                        <span className="text-xs font-bold text-slate-500">{risk.category}</span>
+                      </div>
+                      <p className="font-bold text-slate-900 text-sm mb-2">{risk.description}</p>
+                      <p className="text-xs text-slate-600"><span className="font-semibold">Mitigation:</span> {risk.mitigationStrategy}</p>
+                    </div>
+                    <div className="flex flex-row md:flex-col justify-between items-end md:items-end gap-2 md:w-32 shrink-0 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
+                        <p className={`text-sm font-bold ${risk.status === 'Open' ? 'text-amber-600' : 'text-emerald-600'}`}>{risk.status}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner</p>
+                        <p className="text-sm font-bold text-slate-900">{risk.owner}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Partners Section */}
+          {project.partners && project.partners.length > 0 && (
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+              <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+                <Users className="text-indigo-600" size={20} /> Project Partners
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {project.partners.map(partner => (
+                  <div key={partner.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                    <h5 className="font-bold text-slate-900 mb-1">{partner.name}</h5>
+                    <p className="text-xs text-indigo-600 font-semibold mb-4">{partner.role}</p>
+                    <div className="space-y-2 text-sm text-slate-600">
+                      <p><span className="text-slate-400">Contact:</span> {partner.contactPerson}</p>
+                      <p><span className="text-slate-400">Email:</span> {partner.email}</p>
+                      {partner.contributionAmount && (
+                        <p><span className="text-slate-400">Contribution:</span> RWF {(partner.contributionAmount / 1000000).toFixed(1)}M</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

@@ -1,4 +1,15 @@
 
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Admin' | 'Project Manager' | 'Field Officer' | 'Viewer';
+  status: 'ACTIVE' | 'INACTIVE';
+  lastLogin: string;
+  department: string;
+  permissions: string[];
+}
+
 export enum ViewState {
   LANDING = 'LANDING',
   REGISTER = 'REGISTER',
@@ -11,7 +22,11 @@ export enum ViewState {
   TEAM = 'TEAM',
   SETTINGS = 'SETTINGS',
   ADMIN_PANEL = 'ADMIN_PANEL',
-  CUSTOM_PAGE = 'CUSTOM_PAGE'
+  CUSTOM_PAGE = 'CUSTOM_PAGE',
+  DATA_ANALYSIS = 'DATA_ANALYSIS',
+  DATASETS = 'DATASETS',
+  FIELD_APP = 'FIELD_APP',
+  AI_GENERATOR = 'AI_GENERATOR'
 }
 
 export enum QuestionType {
@@ -54,6 +69,7 @@ export interface Survey {
   questions?: Question[];
   languages?: string[];
   linkedProjectId?: string;
+  customFields?: Record<string, any>;
 }
 
 // Financial Structures
@@ -134,6 +150,48 @@ export interface Beneficiary {
   idNumber?: string;
   educationLevel?: 'None' | 'Primary' | 'Secondary' | 'TVET' | 'University';
   householdSize?: number;
+  customFields?: Record<string, any>;
+}
+
+export interface ProjectMilestone {
+  id: string;
+  name: string;
+  dueDate: string;
+  status: 'Not Started' | 'In Progress' | 'Completed';
+  completionDate?: string;
+}
+
+export interface ProjectRisk {
+  id: string;
+  description: string;
+  category: 'Financial' | 'Operational' | 'Strategic' | 'Compliance' | 'Reputational';
+  probability: 'Low' | 'Medium' | 'High';
+  impact: 'Low' | 'Medium' | 'High';
+  mitigationStrategy: string;
+  status: 'Open' | 'Mitigated' | 'Closed';
+  owner: string;
+}
+
+export interface ProjectPartner {
+  id: string;
+  name: string;
+  role: 'Funder' | 'Implementing Partner' | 'Government' | 'Community Based Organization';
+  contributionAmount?: number;
+  contactPerson: string;
+  email: string;
+}
+
+export interface ProjectIntervention {
+  id: string;
+  name: string;
+  type: 'Training' | 'Distribution' | 'Infrastructure' | 'Advocacy' | 'Cash Transfer' | 'Health Service' | 'Other';
+  targetDemographic: string;
+  startDate: string;
+  endDate: string;
+  status: 'Planned' | 'Active' | 'Completed' | 'Suspended';
+  budgetAllocated: number;
+  beneficiariesReached: number;
+  description: string;
 }
 
 export interface Project {
@@ -153,6 +211,12 @@ export interface Project {
   beneficiaryList: Beneficiary[];
   activityLog: ActivityLogEntry[];
   logframe?: LogframeElement[];
+  customFields?: Record<string, any>;
+  milestones?: ProjectMilestone[];
+  risks?: ProjectRisk[];
+  partners?: ProjectPartner[];
+  interventions?: ProjectIntervention[];
+  thematicAreas?: string[];
 }
 
 // No-Code Platform Types
@@ -161,6 +225,8 @@ export interface VirtualField {
   name: string;
   label: string;
   type: 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'BOOLEAN' | 'FILE';
+  options?: string[];
+  defaultValue?: string | number | boolean;
   validation?: { required: boolean; pattern?: string };
 }
 
@@ -191,6 +257,15 @@ export interface FormDefinition {
   publishStatus: 'DRAFT' | 'PUBLISHED';
 }
 
+export interface FormSubmission {
+  id: string;
+  formId: string;
+  formName: string;
+  data: any;
+  timestamp: string;
+  status: 'pending' | 'synced' | 'failed';
+}
+
 export interface WorkflowAction {
   id: string;
   name: string;
@@ -218,6 +293,7 @@ export interface AIHubResponse {
   surveyTitle: string;
   surveyDescription: string;
   linkedProjectId?: string;
+  customFields?: Record<string, any>;
   questions: {
     text: string;
     type: string;

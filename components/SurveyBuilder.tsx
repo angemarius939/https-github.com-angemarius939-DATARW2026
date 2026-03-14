@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { generateSurveyFromDescription, translateSurvey } from '../services/aiService';
-import { AIHubResponse, QuestionType, Survey, ViewConfig, Project } from '../types';
+import { AIHubResponse, QuestionType, Survey, ViewConfig, Project, VirtualTable } from '../types';
 import { Sparkles, Loader2, Plus, Trash2, Save, FileText, Calendar, BarChart2, Search, ArrowLeft, Pencil, X, CheckSquare, AlertCircle, GripVertical, Calculator, Camera, Upload, Sliders, PenTool, Image as ImageIcon, FolderKanban } from 'lucide-react';
 
 interface SurveyBuilderProps {
@@ -10,9 +10,10 @@ interface SurveyBuilderProps {
   onNotify: (msg: string, type?: 'success' | 'error') => void;
   activeProjectId: string | null;
   projects: Project[];
+  virtualTables?: VirtualTable[];
 }
 
-const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobalSurveys, onNotify, activeProjectId, projects }) => {
+const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobalSurveys, onNotify, activeProjectId, projects, virtualTables = [] }) => {
   const [prompt, setPrompt] = useState('');
   const [fileContext, setFileContext] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -88,6 +89,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
       surveyTitle: survey.title,
       surveyDescription: survey.description,
       linkedProjectId: survey.linkedProjectId,
+      customFields: survey.customFields || {},
       questions: survey.questions ? survey.questions.map(q => ({
         text: q.text,
         type: q.type,
@@ -111,6 +113,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
       responseCount: 0,
       createdAt: new Date().toISOString().split('T')[0],
       linkedProjectId: finalProjectId || undefined,
+      customFields: generatedSurvey.customFields || {},
       questions: generatedSurvey.questions.map((q, i) => ({
         id: `q-${i}`,
         text: q.text,
@@ -181,6 +184,34 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
                   </span>
                )}
             </div>
+
+            {virtualTables.find(t => t.id === 'surveys')?.fields && virtualTables.find(t => t.id === 'surveys')!.fields.length > 0 && (
+               <div className="mt-6 pt-6 border-t border-slate-100">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
+                     <Sliders size={14} /> Custom Attributes
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     {virtualTables.find(t => t.id === 'surveys')!.fields.map(field => (
+                        <div key={field.id} className="space-y-1.5">
+                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{field.label}</label>
+                           <input 
+                              type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+                              placeholder={field.label} 
+                              className="w-full p-4 bg-white border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                              value={generatedSurvey.customFields?.[field.name] || ''} 
+                              onChange={(e) => setGeneratedSurvey({
+                                 ...generatedSurvey, 
+                                 customFields: {
+                                    ...(generatedSurvey.customFields || {}),
+                                    [field.name]: e.target.value
+                                 }
+                              })}
+                           />
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            )}
           </div>
           <div className="p-8 space-y-6">
             {generatedSurvey.questions.map((q, idx) => (
@@ -341,6 +372,9 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
            <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
               <tr>
                  <th className="px-8 py-4">Title & Context</th>
+                 {virtualTables.find(t => t.id === 'surveys')?.fields.map(f => (
+                    <th key={f.id} className="px-8 py-4 text-center">{f.label}</th>
+                 ))}
                  <th className="px-8 py-4 text-center">Responses</th>
                  <th className="px-8 py-4 text-center">Status</th>
                  <th className="px-8 py-4 text-right">Actions</th>
@@ -360,6 +394,11 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
                        </div>
                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{s.description}</div>
                     </td>
+                    {virtualTables.find(t => t.id === 'surveys')?.fields.map(f => (
+                       <td key={f.id} className="px-8 py-6 text-center text-slate-500 font-mono text-xs">
+                          {s.customFields?.[f.name] || '-'}
+                       </td>
+                    ))}
                     <td className="px-8 py-6 text-center text-slate-500 font-mono text-xs">{s.responseCount}</td>
                     <td className="px-8 py-6 text-center">
                        <span className="px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black uppercase tracking-widest rounded-full ring-1 ring-green-100">{s.status}</span>
@@ -372,7 +411,7 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
                  </tr>
               ))}
               {surveys.length === 0 && (
-                <tr><td colSpan={4} className="p-20 text-center text-slate-300 font-bold">No surveys found in this context.</td></tr>
+                <tr><td colSpan={4 + (virtualTables.find(t => t.id === 'surveys')?.fields.length || 0)} className="p-20 text-center text-slate-300 font-bold">No surveys found in this context.</td></tr>
               )}
            </tbody>
         </table>

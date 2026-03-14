@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Project, BudgetLine, ActivityLogEntry, ProjectActivity, Beneficiary, ProjectIndicator, IndicatorTarget, LogframeElement, Survey } from '../types';
+import { Project, BudgetLine, ActivityLogEntry, ProjectActivity, Beneficiary, ProjectIndicator, IndicatorTarget, LogframeElement, Survey, VirtualTable } from '../types';
 import ProjectDetailView from './ProjectDetailView';
 import { 
   FolderKanban, Plus, Search, Filter, MoreVertical, 
@@ -24,6 +24,8 @@ interface ProjectsViewProps {
   clearDeepLink?: () => void;
   triggerCreate?: boolean;
   onTriggerCreateHandled?: () => void;
+  virtualTables?: VirtualTable[];
+  onNavigateToAnalysis?: (projectId: string) => void;
 }
 
 const ProjectsView: React.FC<ProjectsViewProps> = ({ 
@@ -34,13 +36,16 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   onProjectSelect, 
   clearDeepLink,
   triggerCreate,
-  onTriggerCreateHandled
+  onTriggerCreateHandled,
+  virtualTables = [],
+  onNavigateToAnalysis
 }) => {
   const [projects, setProjects] = useState<Project[]>(initialProjects);
   const [viewMode, setViewMode] = useState<'LIST' | 'WORKSPACE' | 'DETAIL'>('LIST');
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD'>('LIST');
+  const kanbanColumns = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'Cancelled'];
   
   // Modal states
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -82,8 +87,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   // Settings Form State
   const [settingsForm, setSettingsForm] = useState<Partial<Project>>({});
 
+  const customFields = virtualTables.find(t => t.id === 'projects')?.fields || [];
+
   // New Project State with Budget Breakdown
-  const [newProjectData, setNewProjectData] = useState<Partial<Project> & { breakdown: Record<string, number> }>({
+  const [newProjectData, setNewProjectData] = useState<Partial<Project> & { breakdown: Record<string, number>, customFields?: Record<string, any> }>({
     name: '',
     location: '',
     budget: 0,
@@ -96,7 +103,8 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
       'Travel': 0,
       'Sub-grants': 0,
       'Other': 0
-    }
+    },
+    customFields: {}
   });
 
   // Automatically sync total budget from breakdown
@@ -192,6 +200,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         indicators: [],
         activities: [],
         beneficiaryList: [],
+        customFields: newProjectData.customFields || {},
         logframe: [
            { id: 'lf-1', type: 'Impact', code: 'IMPACT-1', description: `Improve socio-economic wellbeing in ${newProjectData.location}.` }
         ],
@@ -354,6 +363,24 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     onNotify(editingIndicatorId ? "Indicator updated successfully" : "Indicator registered successfully");
   };
 
+  const handleDeleteIndicator = (indicatorId: string) => {
+    if (!activeProject) return;
+    
+    const updatedIndicators = (activeProject.indicators || []).filter(ind => ind.id !== indicatorId);
+    
+    const updatedProject = {
+        ...activeProject,
+        indicators: updatedIndicators,
+        activityLog: [
+            { id: 'l-' + Date.now(), action: 'Indicator Deleted', details: `A KPI was removed from the registry.`, timestamp: new Date().toISOString(), user: 'Admin' },
+            ...(activeProject.activityLog || [])
+        ]
+    };
+    setActiveProject(updatedProject);
+    setProjects(projects.map(p => p.id === activeProject.id ? updatedProject : p));
+    onNotify("Indicator deleted successfully");
+  };
+
   const handleUpdateSettings = () => {
     if (!activeProject) return;
     setIsSaving(true);
@@ -393,6 +420,26 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     }
   };
 
+  const getActivityStatusColor = (status: string) => {
+    switch (status) {
+      case 'Completed': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'In Progress': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'Delayed': return 'bg-red-100 text-red-700 border-red-200';
+      case 'Cancelled': return 'bg-slate-100 text-slate-700 border-slate-200';
+      default: return 'bg-slate-100 text-slate-600 border-slate-200';
+    }
+  };
+
+  const getActivityStatusIcon = (status: string) => {
+    switch (status) {
+      case 'Completed': return <CheckCircle size={14} />;
+      case 'In Progress': return <Activity size={14} />;
+      case 'Delayed': return <AlertTriangle size={14} />;
+      case 'Cancelled': return <X size={14} />;
+      default: return <Clock size={14} />;
+    }
+  };
+
   const uniqueLocations = useMemo(() => {
     const locations = projects.map(p => p.location).filter(Boolean);
     return ['All', ...Array.from(new Set(locations))];
@@ -415,6 +462,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         project={activeProject} 
         onBack={() => { setViewMode('LIST'); setActiveProject(null); }}
         onOpenWorkspace={openWorkspace}
+        onNavigateToAnalysis={onNavigateToAnalysis}
       />
     );
   }
@@ -701,50 +749,113 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                               </div>
                            </div>
 
-                           <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-                               <table className="w-full text-left text-sm">
-                                   <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                       <tr>
-                                           <th className="px-8 py-5">Task Identity & Lead</th>
-                                           <th className="px-8 py-5">Strategic Alignment</th>
-                                           <th className="px-8 py-5">Launch Period</th>
-                                           <th className="px-8 py-5 text-right">Completion</th>
-                                       </tr>
-                                   </thead>
-                                   <tbody className="divide-y divide-slate-50">
-                                       {activeProject.activities?.map(act => (
-                                           <tr key={act.id} onClick={() => handleOpenActivityModal(act)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
-                                               <td className="px-8 py-5">
-                                                   <div className="flex items-center gap-4">
-                                                       <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0"><CheckSquare size={18}/></div>
-                                                       <div>
-                                                           <p className="font-bold text-slate-900">{act.name}</p>
-                                                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><User size={10}/> {act.assignedTo || 'Unassigned'}</p>
-                                                       </div>
-                                                   </div>
-                                               </td>
-                                               <td className="px-8 py-5">
-                                                   {activeProject.logframe?.find(l => l.id === act.linkedOutputId) ? (
-                                                       <div className="flex flex-col gap-1">
-                                                          <span className="text-[10px] font-black text-indigo-600 uppercase bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 w-fit">{activeProject.logframe.find(l => l.id === act.linkedOutputId)?.code}</span>
-                                                          <p className="text-[10px] text-slate-400 font-medium line-clamp-1">{activeProject.logframe.find(l => l.id === act.linkedOutputId)?.description}</p>
-                                                       </div>
-                                                   ) : (
-                                                       <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Unaligned Task</span>
-                                                   )}
-                                               </td>
-                                               <td className="px-8 py-5 text-xs font-bold text-slate-500">{act.startDate}</td>
-                                               <td className="px-8 py-5 text-right">
-                                                   <span className="font-black text-slate-900">{act.completionPercentage}%</span>
-                                               </td>
+                           {activityViewMode === 'LIST' ? (
+                               <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+                                   <table className="w-full text-left text-sm">
+                                       <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                           <tr>
+                                               <th className="px-8 py-5">Task Identity & Lead</th>
+                                               <th className="px-8 py-5">Strategic Alignment</th>
+                                               <th className="px-8 py-5">Launch Period</th>
+                                               <th className="px-8 py-5 text-right">Completion</th>
                                            </tr>
-                                       ))}
-                                       {activeProject.activities?.length === 0 && (
-                                          <tr><td colSpan={4} className="py-24 text-center text-slate-300 font-bold uppercase text-[10px] tracking-[0.2em]">No activities scheduled in work plan</td></tr>
-                                       )}
-                                   </tbody>
-                               </table>
-                           </div>
+                                       </thead>
+                                       <tbody className="divide-y divide-slate-50">
+                                           {activeProject.activities?.map(act => (
+                                               <tr key={act.id} onClick={() => handleOpenActivityModal(act)} className="hover:bg-slate-50/50 transition-colors cursor-pointer group">
+                                                   <td className="px-8 py-5">
+                                                       <div className="flex items-center gap-4">
+                                                           <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0"><CheckSquare size={18}/></div>
+                                                           <div>
+                                                               <p className="font-bold text-slate-900">{act.name}</p>
+                                                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><User size={10}/> {act.assignedTo || 'Unassigned'}</p>
+                                                           </div>
+                                                       </div>
+                                                   </td>
+                                                   <td className="px-8 py-5">
+                                                       {activeProject.logframe?.find(l => l.id === act.linkedOutputId) ? (
+                                                           <div className="flex flex-col gap-1">
+                                                              <span className="text-[10px] font-black text-indigo-600 uppercase bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100 w-fit">{activeProject.logframe.find(l => l.id === act.linkedOutputId)?.code}</span>
+                                                              <p className="text-[10px] text-slate-400 font-medium line-clamp-1">{activeProject.logframe.find(l => l.id === act.linkedOutputId)?.description}</p>
+                                                           </div>
+                                                       ) : (
+                                                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Unaligned Task</span>
+                                                       )}
+                                                   </td>
+                                                   <td className="px-8 py-5 text-xs font-bold text-slate-500">{act.startDate}</td>
+                                                   <td className="px-8 py-5 text-right">
+                                                       <span className="font-black text-slate-900">{act.completionPercentage}%</span>
+                                                   </td>
+                                               </tr>
+                                           ))}
+                                           {activeProject.activities?.length === 0 && (
+                                              <tr><td colSpan={4} className="py-24 text-center text-slate-300 font-bold uppercase text-[10px] tracking-[0.2em]">No activities scheduled in work plan</td></tr>
+                                           )}
+                                       </tbody>
+                                   </table>
+                               </div>
+                           ) : (
+                               <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar">
+                                   {kanbanColumns.map(column => {
+                                       const columnActivities = activeProject.activities?.filter(a => a.status === column) || [];
+                                       return (
+                                           <div key={column} className="flex-1 min-w-[280px] bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col h-full">
+                                               <div className="flex justify-between items-center mb-4">
+                                                   <h5 className="text-xs font-black uppercase tracking-widest text-slate-700">{column}</h5>
+                                                   <span className="bg-white text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full border border-slate-200">
+                                                       {columnActivities.length}
+                                                   </span>
+                                               </div>
+                                               <div className="space-y-3 flex-1">
+                                                   {columnActivities.map(activity => (
+                                                       <div key={activity.id} onClick={() => handleOpenActivityModal(activity)} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                                                           <div className="flex justify-between items-start mb-2">
+                                                               <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">
+                                                                   {activity.category}
+                                                               </span>
+                                                               <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${getActivityStatusColor(activity.status)}`}>
+                                                                   {getActivityStatusIcon(activity.status)}
+                                                               </span>
+                                                           </div>
+                                                           <h6 className="font-bold text-slate-900 text-sm mb-3 leading-tight">{activity.name}</h6>
+                                                           
+                                                           <div className="mb-3">
+                                                               <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
+                                                                   <span>Progress</span>
+                                                                   <span>{activity.completionPercentage}%</span>
+                                                               </div>
+                                                               <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                                                                   <div 
+                                                                       className={`h-full rounded-full ${activity.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+                                                                       style={{width: `${activity.completionPercentage}%`}}
+                                                                   ></div>
+                                                               </div>
+                                                           </div>
+                                                           
+                                                           <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                                                               <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-medium">
+                                                                   <Calendar size={10} />
+                                                                   {activity.endDate}
+                                                               </div>
+                                                               <div className="flex items-center gap-1 text-[10px] text-slate-500 font-medium" title={activity.assignedTo}>
+                                                                   <div className="w-5 h-5 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-[8px]">
+                                                                       {activity.assignedTo?.charAt(0) || '?'}
+                                                                   </div>
+                                                               </div>
+                                                           </div>
+                                                       </div>
+                                                   ))}
+                                                   {columnActivities.length === 0 && (
+                                                       <div className="h-24 border-2 border-dashed border-slate-200 rounded-xl flex items-center justify-center text-slate-400 text-xs font-medium">
+                                                           No activities
+                                                       </div>
+                                                   )}
+                                               </div>
+                                           </div>
+                                       );
+                                   })}
+                               </div>
+                           )}
                         </div>
                     )}
 
@@ -795,11 +906,29 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                                    <p className="text-xs text-slate-400">Baseline: {ind.baseline}</p>
                                                    <p className="font-black text-slate-900">{ind.overallTarget} {ind.unit}</p>
                                                </td>
-                                               <td className="px-8 py-5 text-right font-black text-indigo-600">{ind.achieved} {ind.unit}</td>
                                                <td className="px-8 py-5 text-right">
-                                                  <button onClick={() => handleOpenIndicatorModal(ind)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
-                                                     <Pencil size={16} />
-                                                  </button>
+                                                  <div className="flex flex-col items-end gap-1.5">
+                                                     <span className="font-black text-indigo-600">{ind.achieved} {ind.unit}</span>
+                                                     <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                        <div 
+                                                           className={`h-full rounded-full ${ind.achieved >= ind.overallTarget ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                                                           style={{ width: `${Math.min(100, ind.overallTarget > 0 ? (ind.achieved / ind.overallTarget) * 100 : 0)}%` }}
+                                                        ></div>
+                                                     </div>
+                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                                                        {ind.overallTarget > 0 ? Math.round((ind.achieved / ind.overallTarget) * 100) : 0}% Achieved
+                                                     </span>
+                                                  </div>
+                                               </td>
+                                               <td className="px-8 py-5 text-right">
+                                                  <div className="flex justify-end gap-2">
+                                                      <button onClick={() => handleOpenIndicatorModal(ind)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                                                         <Pencil size={16} />
+                                                      </button>
+                                                      <button onClick={() => handleDeleteIndicator(ind.id)} className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all">
+                                                         <Trash2 size={16} />
+                                                      </button>
+                                                  </div>
                                                </td>
                                             </tr>
                                         );
@@ -1244,6 +1373,34 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                             </div>
                           </div>
                         </div>
+
+                        {customFields.length > 0 && (
+                           <div className="mt-12 space-y-6 border-t border-slate-100 pt-8">
+                              <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
+                                 <div className="w-4 h-0.5 bg-indigo-600"></div> Custom Attributes
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                 {customFields.map(field => (
+                                    <div key={field.id} className="space-y-1.5">
+                                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{field.label}</label>
+                                       <input 
+                                          type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+                                          placeholder={field.label} 
+                                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" 
+                                          value={newProjectData.customFields?.[field.name] || ''} 
+                                          onChange={(e) => setNewProjectData({
+                                             ...newProjectData, 
+                                             customFields: {
+                                                ...(newProjectData.customFields || {}),
+                                                [field.name]: e.target.value
+                                             }
+                                          })}
+                                       />
+                                    </div>
+                                 ))}
+                              </div>
+                           </div>
+                        )}
                       </div>
 
                       <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50 shrink-0">
@@ -1350,6 +1507,25 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                     <option value="Annually">Annually</option>
                                  </select>
                             </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Baseline</label>
+                                <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="0" value={indicatorForm.baseline || 0} onChange={e => setIndicatorForm({...indicatorForm, baseline: Number(e.target.value)})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Overall Target</label>
+                                <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="100" value={indicatorForm.overallTarget || 0} onChange={e => setIndicatorForm({...indicatorForm, overallTarget: Number(e.target.value)})} />
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Linked Logframe Element</label>
+                            <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={indicatorForm.linkedLogframeId || ''} onChange={e => setIndicatorForm({...indicatorForm, linkedLogframeId: e.target.value})}>
+                                <option value="">None</option>
+                                {activeProject.logframe?.map(l => (
+                                    <option key={l.id} value={l.id}>{l.code} - {l.description}</option>
+                                ))}
+                            </select>
                         </div>
                      </div>
                      <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
@@ -1458,6 +1634,20 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                        <div className="flex items-center gap-2 text-sm font-black text-slate-900 truncate"><User size={14} className="text-indigo-400" />{project.manager}</div>
                     </div>
                  </div>
+                 {project.thematicAreas && project.thematicAreas.length > 0 && (
+                   <div className="pt-2 flex flex-wrap gap-1.5">
+                     {project.thematicAreas.slice(0, 2).map(area => (
+                       <span key={area} className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">
+                         {area}
+                       </span>
+                     ))}
+                     {project.thematicAreas.length > 2 && (
+                       <span className="px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500 border border-slate-200">
+                         +{project.thematicAreas.length - 2}
+                       </span>
+                     )}
+                   </div>
+                 )}
               </div>
             </div>
             <div className="bg-slate-50 px-8 py-5 border-t border-slate-100 flex justify-between items-center group-hover:bg-indigo-50/50 transition-colors">

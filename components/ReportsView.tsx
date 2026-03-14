@@ -26,6 +26,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
   const [activeReportName, setActiveReportName] = useState('');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [tempConfig, setTempConfig] = useState<ViewConfig>(config);
+  const [generatedReport, setGeneratedReport] = useState<{title: string, content: React.ReactNode} | null>(null);
 
   // Mock M&E Data
   const provinceData = [
@@ -58,11 +59,117 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
     { title: 'Data Audit Summary', desc: 'DQA scores and survey response reliability.', icon: <FileText size={24} className="text-amber-600"/>, color: 'amber' },
   ];
 
+  const getReportContent = (title: string) => {
+    switch (title) {
+      case 'Project Progress Report':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Budget</p>
+                <p className="text-2xl font-black text-slate-900">450M FRW</p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Spent</p>
+                <p className="text-2xl font-black text-slate-900">210M FRW</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 mb-3">Activity Status</h4>
+              <div className="space-y-3">
+                {['Phase 1: Planning', 'Phase 2: Implementation', 'Phase 3: Review'].map((activity, i) => (
+                  <div key={i} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-lg">
+                    <span className="font-medium text-slate-700">{activity}</span>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${i === 0 ? 'bg-green-100 text-green-700' : i === 1 ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {i === 0 ? 'Completed' : i === 1 ? 'In Progress' : 'Pending'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      case 'Beneficiary Impact Brief':
+        return (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                <p className="text-xs font-bold text-green-600 uppercase tracking-widest">Total Reached</p>
+                <p className="text-3xl font-black text-green-700">12,450</p>
+              </div>
+              <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Target Achievement</p>
+                <p className="text-3xl font-black text-indigo-700">89%</p>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-slate-900 mb-3">Key Performance Indicators</h4>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-slate-600">Health Outcomes Improved</span>
+                    <span className="font-bold text-slate-900">75%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="bg-indigo-500 h-2 rounded-full" style={{ width: '75%' }}></div>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-slate-600">Education Access Increased</span>
+                    <span className="font-bold text-slate-900">92%</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="bg-green-500 h-2 rounded-full" style={{ width: '92%' }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      case 'Data Audit Summary':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-100 rounded-xl">
+              <div className="p-3 bg-amber-100 text-amber-600 rounded-lg">
+                <CheckCircle size={24} />
+              </div>
+              <div>
+                <p className="font-bold text-amber-900">Data Quality Assessment (DQA)</p>
+                <p className="text-sm text-amber-700">Overall Score: 94/100 - Excellent</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 border border-slate-100 rounded-xl">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Validity</p>
+                <p className="text-xl font-black text-slate-900">98%</p>
+              </div>
+              <div className="p-4 border border-slate-100 rounded-xl">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Reliability</p>
+                <p className="text-xl font-black text-slate-900">91%</p>
+              </div>
+              <div className="p-4 border border-slate-100 rounded-xl">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Timeliness</p>
+                <p className="text-xl font-black text-slate-900">95%</p>
+              </div>
+              <div className="p-4 border border-slate-100 rounded-xl">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Integrity</p>
+                <p className="text-xl font-black text-slate-900">99%</p>
+              </div>
+            </div>
+          </div>
+        );
+      default:
+        return <p>Report content not available.</p>;
+    }
+  };
+
   const handleGenerate = (title: string) => {
     setActiveReportName(title);
     setIsGenerating(true);
     setTimeout(() => {
       setIsGenerating(false);
+      setGeneratedReport({ title, content: getReportContent(title) });
       onNotify(`${title} compiled for selected context`, "success");
     }, 2500);
   };
@@ -267,6 +374,33 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
              </div>
              <h4 className="font-black text-2xl text-slate-900">Processing Hub Data</h4>
              <p className="text-slate-500 font-medium text-sm">Validating metrics for {activeReportName} against live Rwandan field data...</p>
+          </div>
+        </div>
+      )}
+
+      {generatedReport && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                  <FileText size={20} />
+                </div>
+                <h2 className="text-xl font-black text-slate-900">{generatedReport.title}</h2>
+              </div>
+              <button onClick={() => setGeneratedReport(null)} className="p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-700 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+              {generatedReport.content}
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+              <button onClick={() => setGeneratedReport(null)} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Close</button>
+              <button className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all flex items-center gap-2">
+                <Download size={16} /> Download PDF
+              </button>
+            </div>
           </div>
         </div>
       )}

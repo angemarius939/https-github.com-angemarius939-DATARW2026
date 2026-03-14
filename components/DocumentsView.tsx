@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   HardDrive, Folder, FileText, Search, Plus, 
   MoreVertical, Download, Clock, Filter, 
-  Trash2, Loader2, X, UploadCloud, CheckCircle
+  Trash2, Loader2, X, UploadCloud, CheckCircle,
+  FileJson, FileSpreadsheet
 } from 'lucide-react';
 
 interface DocumentsViewProps {
@@ -15,14 +16,15 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const docs = [
+  const [docs, setDocs] = useState([
     { id: 1, name: 'Water_Project_Proposal_Final.pdf', type: 'PDF', category: 'Proposals', size: '2.4 MB', owner: 'Jean B.', date: '2024-03-10' },
     { id: 2, name: 'MoU_Ministry_of_Health.pdf', type: 'PDF', category: 'Agreements', size: '1.1 MB', owner: 'Admin', date: '2024-01-05' },
     { id: 3, name: 'Beneficiary_Survey_Results.csv', type: 'CSV', category: 'Field Data', size: '15.2 MB', owner: 'Eric M.', date: '2024-04-12' },
     { id: 4, name: 'Annual_Impact_Report_2023.docx', type: 'DOCX', category: 'Reports', size: '4.8 MB', owner: 'Marie C.', date: '2024-01-20' },
     { id: 5, name: 'Site_Photos_Musanze.zip', type: 'ZIP', category: 'Media', size: '45.0 MB', owner: 'Jean B.', date: '2024-02-15' },
-  ];
+  ]);
 
   const categories = ['All', 'Proposals', 'Reports', 'Agreements', 'Field Data', 'Media'];
 
@@ -32,16 +34,87 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify }) => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleUpload = () => {
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleExport = (format: 'csv' | 'json') => {
+    if (filteredDocs.length === 0) {
+      onNotify("No documents to export", "error");
+      return;
+    }
+
+    const dataToExport = filteredDocs.map(doc => ({
+      ID: doc.id,
+      Name: doc.name,
+      Type: doc.type,
+      Category: doc.category,
+      Size: doc.size,
+      Owner: doc.owner,
+      Date: doc.date
+    }));
+
+    let content = '';
+    let mimeType = '';
+    let extension = '';
+
+    if (format === 'csv') {
+      const headers = Object.keys(dataToExport[0]).join(',');
+      const rows = dataToExport.map(row => Object.values(row).map(val => `"${val}"`).join(','));
+      content = [headers, ...rows].join('\n');
+      mimeType = 'text/csv;charset=utf-8;';
+      extension = 'csv';
+    } else if (format === 'json') {
+      content = JSON.stringify(dataToExport, null, 2);
+      mimeType = 'application/json;charset=utf-8;';
+      extension = 'json';
+    }
+
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `documents_export_${new Date().toISOString().split('T')[0]}.${extension}`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    onNotify(`Exported ${filteredDocs.length} documents as ${format.toUpperCase()}`, 'success');
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
     setIsUploading(true);
     setUploadProgress(0);
+    
+    // Simulate upload progress
     const interval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
           setTimeout(() => {
             setIsUploading(false);
-            onNotify("File uploaded successfully to secure repository");
+            
+            // Add the new file to the list
+            const newDoc = {
+              id: Date.now(),
+              name: file.name,
+              type: file.name.split('.').pop()?.toUpperCase() || 'FILE',
+              category: activeCategory !== 'All' ? activeCategory : 'Proposals', // Default to current category
+              size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+              owner: 'Current User',
+              date: new Date().toISOString().split('T')[0]
+            };
+            
+            setDocs(currentDocs => [newDoc, ...currentDocs]);
+            onNotify("File uploaded successfully to secure repository", "success");
+            
+            // Reset input
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
           }, 500);
           return 100;
         }
@@ -57,12 +130,37 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify }) => {
           <h1 className="text-2xl font-bold text-slate-900">Document Repository</h1>
           <p className="text-slate-500">Secure storage for your organizational knowledge and records.</p>
         </div>
-        <button 
-          onClick={handleUpload}
-          className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-lg transition-all"
-        >
-          <Plus size={18} /> Upload Document
-        </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
+            <button 
+              onClick={() => handleExport('csv')}
+              className="flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all"
+              title="Export as CSV"
+            >
+              <FileSpreadsheet size={16} /> CSV
+            </button>
+            <div className="w-px h-4 bg-slate-200 mx-1"></div>
+            <button 
+              onClick={() => handleExport('json')}
+              className="flex items-center gap-2 px-3 py-1.5 text-slate-600 hover:bg-slate-50 hover:text-indigo-600 rounded-lg text-xs font-bold transition-all"
+              title="Export as JSON"
+            >
+              <FileJson size={16} /> JSON
+            </button>
+          </div>
+          <button 
+            onClick={handleUploadClick}
+            className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-lg transition-all"
+          >
+            <Plus size={18} /> Upload Document
+          </button>
+        </div>
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          className="hidden" 
+        />
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">

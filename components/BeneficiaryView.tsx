@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Beneficiary, ViewConfig, Project } from '../types';
+import { Beneficiary, ViewConfig, Project, VirtualTable } from '../types';
 import { 
   Users, Search, Filter, Plus, MoreVertical, 
   MapPin, GraduationCap, Home, Calendar, 
@@ -17,10 +17,11 @@ interface BeneficiaryViewProps {
   projects: Project[];
   config: ViewConfig;
   onSaveConfig: (c: Partial<ViewConfig>) => void;
+  virtualTables?: VirtualTable[];
 }
 
 const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({ 
-  initialBeneficiaries, setGlobalBeneficiaries, onNotify, activeProjectId, projects, config, onSaveConfig 
+  initialBeneficiaries, setGlobalBeneficiaries, onNotify, activeProjectId, projects, config, onSaveConfig, virtualTables = []
 }) => {
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,6 +61,9 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
     return matchesSearch && matchesDistrict && matchesStatus && matchesProject;
   });
 
+  const beneficiaryTableDef = virtualTables.find(t => t.id === 'beneficiaries');
+  const customFields = beneficiaryTableDef?.fields || [];
+
   const handleRegister = () => {
     if (!newBen.firstName || !newBen.lastName || !newBen.location || !newBen.age) {
         onNotify("Please fill in all mandatory demographic fields", "error");
@@ -82,7 +86,8 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
         educationLevel: newBen.educationLevel as any || 'None',
         householdSize: Number(newBen.householdSize) || 1,
         programs: activeProject ? [activeProject.name] : ['General Registration'],
-        cases: []
+        cases: [],
+        customFields: newBen.customFields || {}
       };
 
       const updated = [b, ...beneficiaries];
@@ -184,8 +189,8 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                 <option value="Kayonza">Kayonza</option>
             </select>
           </div>
-          <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-2xl">
-            <Filter size={16} className="text-slate-400" />
+          <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors">
+            <Filter size={16} className={filterStatus !== 'All' ? 'text-indigo-500' : 'text-slate-400'} />
             <select className="bg-transparent text-xs font-bold uppercase text-slate-600 outline-none cursor-pointer" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)}>
                 <option value="All">Status: All</option>
                 <option value="Active">Active</option>
@@ -209,6 +214,9 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                 <th className="px-8 py-5">Demographics</th>
                 <th className="px-8 py-5">Primary Residence</th>
                 <th className="px-8 py-5">Status</th>
+                {customFields.map(field => (
+                  <th key={field.id} className="px-8 py-5">{field.label}</th>
+                ))}
                 <th className="px-8 py-5 text-right">Actions</th>
               </tr>
             </thead>
@@ -256,6 +264,11 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                       {b.status}
                     </span>
                   </td>
+                  {customFields.map(field => (
+                    <td key={field.id} className="px-8 py-6 text-sm text-slate-600 font-medium">
+                      {b.customFields?.[field.name] || '-'}
+                    </td>
+                  ))}
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2">
                        <button className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="View Full Profile">
@@ -349,20 +362,22 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Age</label>
                           <input 
                              type="number" 
+                             min="0"
                              placeholder="Years" 
                              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
                              value={newBen.age || ''} 
-                             onChange={(e) => setNewBen({...newBen, age: Number(e.target.value)})} 
+                             onChange={(e) => setNewBen({...newBen, age: Math.max(0, Number(e.target.value))})} 
                           />
                        </div>
                        <div className="space-y-1.5">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">HH Size</label>
                           <input 
                              type="number" 
+                             min="0"
                              placeholder="Members" 
                              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
                              value={newBen.householdSize || ''} 
-                             onChange={(e) => setNewBen({...newBen, householdSize: Number(e.target.value)})} 
+                             onChange={(e) => setNewBen({...newBen, householdSize: Math.max(0, Number(e.target.value))})} 
                           />
                        </div>
                     </div>
@@ -406,6 +421,32 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                     </div>
                  </div>
               </div>
+
+              {customFields.length > 0 && (
+                 <div className="space-y-5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Custom Attributes</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       {customFields.map(field => (
+                          <div key={field.id} className="space-y-1.5">
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">{field.label}</label>
+                             <input 
+                                type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+                                placeholder={field.label} 
+                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
+                                value={newBen.customFields?.[field.name] || ''} 
+                                onChange={(e) => setNewBen({
+                                   ...newBen, 
+                                   customFields: {
+                                      ...(newBen.customFields || {}),
+                                      [field.name]: e.target.value
+                                   }
+                                })}
+                             />
+                          </div>
+                       ))}
+                    </div>
+                 </div>
+              )}
 
               <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
                  <button onClick={() => setIsRegisterModalOpen(false)} className="px-6 py-4 text-xs font-black text-slate-400 hover:text-slate-700 transition-colors uppercase tracking-widest">Discard</button>

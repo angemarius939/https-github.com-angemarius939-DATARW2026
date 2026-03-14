@@ -111,7 +111,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
       id: newPage.id || Date.now().toString(),
       name: newPage.name,
       description: newPage.description || '',
-      icon: 'Layout',
+      icon: newPage.icon || 'Layout',
       widgets: newPage.widgets || [],
       createdAt: new Date().toISOString(),
       createdBy: 'Admin',
@@ -120,7 +120,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
 
     onSavePage(pageToSave);
     setIsPageModalOpen(false);
-    setNewPage({ name: '', description: '', widgets: [], visibility: 'PUBLIC' });
+    setNewPage({ name: '', description: '', icon: 'Layout', widgets: [], visibility: 'PUBLIC' });
   };
 
   const handleEditPage = (page: CustomPage) => {
@@ -270,6 +270,26 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                           value={newPage.description}
                           onChange={(e) => setNewPage({...newPage, description: e.target.value})}
                         />
+                     </div>
+                     <div className="col-span-2">
+                        <label className="block text-sm font-bold text-slate-700 mb-1">Icon</label>
+                        <select 
+                          className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                          value={newPage.icon || 'Layout'}
+                          onChange={(e) => setNewPage({...newPage, icon: e.target.value})}
+                        >
+                          <option value="Layout">Layout</option>
+                          <option value="Database">Database</option>
+                          <option value="Table">Table</option>
+                          <option value="Grid">Grid</option>
+                          <option value="PieChart">Pie Chart</option>
+                          <option value="BarChartIcon">Bar Chart</option>
+                          <option value="LineChartIcon">Line Chart</option>
+                          <option value="Users">Users</option>
+                          <option value="Shield">Shield</option>
+                          <option value="FilePlus">File Plus</option>
+                          <option value="Settings">Settings</option>
+                        </select>
                      </div>
                   </div>
 

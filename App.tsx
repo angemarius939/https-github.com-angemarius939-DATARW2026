@@ -12,13 +12,17 @@ import SettingsView from './components/SettingsView';
 import AdminPanel from './components/AdminPanel';
 import CustomPageView from './components/CustomPageView';
 import RegisterView from './components/RegisterView';
-import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition } from './types';
+import DataAnalysisView from './components/DataAnalysisView';
+import DatasetsView from './components/DatasetsView';
+import FieldAppView from './components/FieldAppView';
+import AIGeneratorView from './components/AIGeneratorView';
+import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser } from './types';
 import { 
   LayoutDashboard, FileText, FolderKanban, Settings, LogOut, 
   Bell, Users, PieChart, ShieldAlert, UserPlus, 
   Layout, CheckCircle2, ChevronDown, Layers, Wrench,
   FolderOpen, BarChart3, Database, MessageSquare,
-  Edit3, Plus, Table as TableIcon, FilePlus
+  Edit3, Plus, Table as TableIcon, FilePlus, LineChart, Smartphone, BrainCircuit, Bot
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -32,17 +36,61 @@ const App: React.FC = () => {
   // Multi-tenant & Admin State
   const [organizationName, setOrganizationName] = useState<string>('SaveRwanda');
   const [userName, setUserName] = useState<string>('Admin User');
-  const [virtualTables, setVirtualTables] = useState<VirtualTable[]>([]);
+  const [virtualTables, setVirtualTables] = useState<VirtualTable[]>([
+    { id: 'beneficiaries', name: 'Beneficiaries', description: 'Core beneficiary registry', fields: [], recordsCount: 1200 },
+    { id: 'projects', name: 'Projects', description: 'Project portfolio', fields: [], recordsCount: 12 },
+    { id: 'surveys', name: 'Surveys', description: 'Data collection instruments', fields: [], recordsCount: 45 }
+  ]);
   const [workflows, setWorkflows] = useState<WorkflowAction[]>([]);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [dynamicForms, setDynamicForms] = useState<FormDefinition[]>([]);
+  const [formSubmissions, setFormSubmissions] = useState<FormSubmission[]>([]);
+  const [users, setUsers] = useState<AppUser[]>([
+    { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations', permissions: ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'] },
+    { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs', permissions: ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'AI Generator'] },
+    { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field', permissions: ['Projects', 'Beneficiaries', 'Field App'] },
+    { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E', permissions: ['Projects', 'Reports', 'Documents'] },
+  ]);
+  const [currentUserId, setCurrentUserId] = useState<string>('u1');
+  const currentUser = users.find(u => u.id === currentUserId) || users[0];
+
+  const hasPermission = (permission: string) => {
+    if (currentUser.role === 'Admin') return true;
+    return currentUser.permissions?.includes(permission);
+  };
 
   const [pageConfigs, setPageConfigs] = useState<PageConfigs>({});
   const [shouldTriggerProjectCreate, setShouldTriggerProjectCreate] = useState(false);
 
   const [projects, setProjects] = useState<Project[]>([
-    { id: '1', name: 'Clean Water Initiative', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [] },
-    { id: '2', name: 'Rural Education Support', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, beneficiaries: 850, startDate: '2024-03-15', manager: 'Marie Claire', beneficiaryList: [], activityLog: [], activities: [] }
+    { 
+      id: '1', name: 'Clean Water Initiative', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
+      thematicAreas: ['WASH', 'Health'],
+      interventions: [
+        { id: 'i1', name: 'Borehole Drilling', type: 'Infrastructure', targetDemographic: 'Rural Communities', startDate: '2024-02-01', endDate: '2024-08-01', status: 'Completed', budgetAllocated: 20000000, beneficiariesReached: 800, description: 'Drilling 5 new boreholes in Musanze district.' },
+        { id: 'i2', name: 'Hygiene Training', type: 'Training', targetDemographic: 'Women and Children', startDate: '2024-05-01', endDate: '2024-11-01', status: 'Active', budgetAllocated: 5000000, beneficiariesReached: 400, description: 'Community workshops on safe water storage and sanitation.' }
+      ],
+      risks: [
+        { id: 'r1', description: 'Delays in equipment delivery due to supply chain issues', category: 'Operational', probability: 'Medium', impact: 'High', mitigationStrategy: 'Source from multiple local vendors where possible.', status: 'Mitigated', owner: 'Jean Bosco' }
+      ],
+      partners: [
+        { id: 'p1', name: 'WaterAid Rwanda', role: 'Implementing Partner', contributionAmount: 15000000, contactPerson: 'Alice M.', email: 'alice@wateraid.org' }
+      ]
+    },
+    { 
+      id: '2', name: 'Rural Education Support', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, beneficiaries: 850, startDate: '2024-03-15', manager: 'Marie Claire', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
+      thematicAreas: ['Education', 'Youth Empowerment'],
+      interventions: [
+        { id: 'i3', name: 'School Supply Distribution', type: 'Distribution', targetDemographic: 'Primary Students', startDate: '2024-04-01', endDate: '2024-05-01', status: 'Completed', budgetAllocated: 8000000, beneficiariesReached: 850, description: 'Distributing notebooks, pens, and uniforms.' },
+        { id: 'i4', name: 'Teacher Training', type: 'Training', targetDemographic: 'Primary Teachers', startDate: '2024-06-01', endDate: '2024-12-01', status: 'Suspended', budgetAllocated: 10000000, beneficiariesReached: 50, description: 'Pedagogical training for rural educators.' }
+      ],
+      risks: [
+        { id: 'r2', description: 'Low teacher turnout for training sessions', category: 'Operational', probability: 'High', impact: 'Medium', mitigationStrategy: 'Provide transport stipends and schedule during school holidays.', status: 'Open', owner: 'Marie Claire' }
+      ],
+      partners: [
+        { id: 'p2', name: 'Ministry of Education', role: 'Government', contactPerson: 'John D.', email: 'john.d@mineduc.gov.rw' }
+      ]
+    }
   ]);
 
   const [surveys, setSurveys] = useState<Survey[]>([
@@ -86,6 +134,30 @@ const App: React.FC = () => {
     };
   };
 
+  useEffect(() => {
+    if (view === ViewState.LANDING || view === ViewState.REGISTER || view === ViewState.DASHBOARD_HOME) return;
+    
+    const viewToPermissionMap: Record<string, string> = {
+      [ViewState.PROJECTS]: 'Projects',
+      [ViewState.BENEFICIARIES]: 'Beneficiaries',
+      [ViewState.SURVEYS]: 'Surveys',
+      [ViewState.FIELD_APP]: 'Field App',
+      [ViewState.DATA_ANALYSIS]: 'Data Analysis',
+      [ViewState.AI_GENERATOR]: 'AI Generator',
+      [ViewState.DATASETS]: 'Datasets',
+      [ViewState.DOCUMENTS]: 'Documents',
+      [ViewState.REPORTS]: 'Reports',
+      [ViewState.ADMIN_PANEL]: 'Admin Panel',
+      [ViewState.SETTINGS]: 'Admin Panel' // Assuming settings is admin only
+    };
+
+    const requiredPermission = viewToPermissionMap[view];
+    if (requiredPermission && !hasPermission(requiredPermission)) {
+      notify(`You do not have permission to access ${requiredPermission}.`, 'error');
+      setView(ViewState.DASHBOARD_HOME);
+    }
+  }, [view, currentUserId, users]);
+
   const openAdminBuilder = (section: 'pages' | 'database' | 'forms' | 'workflows') => {
     setView(ViewState.ADMIN_PANEL);
     setIsAdminActionsOpen(false);
@@ -105,23 +177,59 @@ const App: React.FC = () => {
              <button onClick={() => setView(ViewState.DASHBOARD_HOME)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DASHBOARD_HOME ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                <LayoutDashboard size={18} /> Dashboard
              </button>
-             <button onClick={() => { setView(ViewState.PROJECTS); setActiveProjectId(null); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.PROJECTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-               <FolderKanban size={18} /> Projects
-             </button>
-             <button onClick={() => setView(ViewState.BENEFICIARIES)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.BENEFICIARIES ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-               <Users size={18} /> Beneficiaries
-             </button>
-             <button onClick={() => setView(ViewState.SURVEYS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.SURVEYS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-               <MessageSquare size={18} /> Surveys (AI)
-             </button>
+             {hasPermission('Projects') && (
+               <button onClick={() => { setView(ViewState.PROJECTS); setActiveProjectId(null); }} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.PROJECTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <FolderKanban size={18} /> Projects
+               </button>
+             )}
+             {hasPermission('Beneficiaries') && (
+               <button onClick={() => setView(ViewState.BENEFICIARIES)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.BENEFICIARIES ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <Users size={18} /> Beneficiaries
+               </button>
+             )}
+             {hasPermission('Surveys') && (
+               <button onClick={() => setView(ViewState.SURVEYS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.SURVEYS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <MessageSquare size={18} /> Surveys (AI)
+               </button>
+             )}
+             {hasPermission('Field App') && (
+               <button onClick={() => setView(ViewState.FIELD_APP)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.FIELD_APP ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <Smartphone size={18} /> Field App (Mobile)
+               </button>
+             )}
 
-             <div className="pt-4 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">Organization Assets</div>
-             <button onClick={() => setView(ViewState.DOCUMENTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DOCUMENTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-               <FolderOpen size={18} /> Documents
-             </button>
-             <button onClick={() => setView(ViewState.REPORTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.REPORTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-               <BarChart3 size={18} /> Reports Hub
-             </button>
+             {(hasPermission('Data Analysis') || hasPermission('AI Generator') || hasPermission('Datasets')) && (
+               <div className="pt-4 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">Intelligence</div>
+             )}
+             {hasPermission('Data Analysis') && (
+               <button onClick={() => setView(ViewState.DATA_ANALYSIS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DATA_ANALYSIS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <BrainCircuit size={18} /> Data Analysis
+               </button>
+             )}
+             {hasPermission('AI Generator') && (
+               <button onClick={() => setView(ViewState.AI_GENERATOR)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.AI_GENERATOR ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <Bot size={18} /> AI Generator
+               </button>
+             )}
+             {hasPermission('Datasets') && (
+               <button onClick={() => setView(ViewState.DATASETS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DATASETS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <Database size={18} /> Datasets
+               </button>
+             )}
+
+             {(hasPermission('Documents') || hasPermission('Reports')) && (
+               <div className="pt-4 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">Organization Assets</div>
+             )}
+             {hasPermission('Documents') && (
+               <button onClick={() => setView(ViewState.DOCUMENTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DOCUMENTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <FolderOpen size={18} /> Documents
+               </button>
+             )}
+             {hasPermission('Reports') && (
+               <button onClick={() => setView(ViewState.REPORTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.REPORTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                 <BarChart3 size={18} /> Reports Hub
+               </button>
+             )}
              
              {customPages.length > 0 && (
                <>
@@ -134,13 +242,17 @@ const App: React.FC = () => {
                </>
              )}
 
-             <div className="pt-6 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">System Admin</div>
-             <button onClick={() => setView(ViewState.ADMIN_PANEL)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-colors ${view === ViewState.ADMIN_PANEL ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-white hover:bg-indigo-900/50'}`}>
-               <Wrench size={18} /> Admin Panel
-             </button>
-             <button onClick={() => setView(ViewState.SETTINGS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.SETTINGS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-               <Settings size={18} /> Settings
-             </button>
+             {(hasPermission('Admin Panel') || currentUser.role === 'Admin') && (
+               <>
+                 <div className="pt-6 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">System Admin</div>
+                 <button onClick={() => setView(ViewState.ADMIN_PANEL)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-bold transition-colors ${view === ViewState.ADMIN_PANEL ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-400 hover:text-white hover:bg-indigo-900/50'}`}>
+                   <Wrench size={18} /> Admin Panel
+                 </button>
+                 <button onClick={() => setView(ViewState.SETTINGS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.SETTINGS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                   <Settings size={18} /> Settings
+                 </button>
+               </>
+             )}
           </div>
           
           <div className="p-4 border-t border-slate-800 bg-slate-900/50">
@@ -169,44 +281,74 @@ const App: React.FC = () => {
                 </div>
              </div>
              <div className="flex items-center gap-4 relative">
-                <div className="relative">
-                  <button 
-                    onClick={() => setIsAdminActionsOpen(!isAdminActionsOpen)}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md group"
-                  >
-                     <Edit3 size={14} className="group-hover:rotate-12 transition-transform" />
-                     Design Mode
-                     <ChevronDown size={12} className={`transition-transform ${isAdminActionsOpen ? 'rotate-180' : ''}`} />
-                  </button>
-                  {isAdminActionsOpen && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-[60] animate-fade-in">
-                       <div className="px-4 py-2 border-b border-slate-100 mb-1">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Design</p>
-                       </div>
-                       <button onClick={() => openAdminBuilder('forms')} className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 flex items-center gap-3 transition-colors">
-                          <FilePlus size={16} className="text-indigo-600" /> Create New Form
-                       </button>
-                       <button onClick={() => openAdminBuilder('database')} className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 flex items-center gap-3 transition-colors">
-                          <TableIcon size={16} className="text-indigo-600" /> Add Database Column
-                       </button>
-                       <button onClick={() => openAdminBuilder('pages')} className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 flex items-center gap-3 transition-colors">
-                          <Layout size={16} className="text-indigo-600" /> Customize Page Layout
-                       </button>
-                       <div className="mt-1 pt-1 border-t border-slate-100 px-4 py-2">
-                          <button onClick={() => setView(ViewState.ADMIN_PANEL)} className="text-indigo-600 text-[10px] font-black uppercase hover:underline">Full Admin Center</button>
-                       </div>
-                    </div>
-                  )}
-                </div>
+                {hasPermission('Admin Panel') && (
+                  <div className="relative">
+                    <button 
+                      onClick={() => setIsAdminActionsOpen(!isAdminActionsOpen)}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-md group"
+                    >
+                       <Edit3 size={14} className="group-hover:rotate-12 transition-transform" />
+                       Design Mode
+                       <ChevronDown size={12} className={`transition-transform ${isAdminActionsOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isAdminActionsOpen && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-[60] animate-fade-in">
+                         <div className="px-4 py-2 border-b border-slate-100 mb-1">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Platform Design</p>
+                         </div>
+                         <button onClick={() => openAdminBuilder('forms')} className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 flex items-center gap-3 transition-colors">
+                            <FilePlus size={16} className="text-indigo-600" /> Create New Form
+                         </button>
+                         <button onClick={() => openAdminBuilder('database')} className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 flex items-center gap-3 transition-colors">
+                            <TableIcon size={16} className="text-indigo-600" /> Add Database Column
+                         </button>
+                         <button onClick={() => openAdminBuilder('pages')} className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-indigo-50 flex items-center gap-3 transition-colors">
+                            <Layout size={16} className="text-indigo-600" /> Customize Page Layout
+                         </button>
+                         <div className="mt-1 pt-1 border-t border-slate-100 px-4 py-2">
+                            <button onClick={() => setView(ViewState.ADMIN_PANEL)} className="text-indigo-600 text-[10px] font-black uppercase hover:underline">Full Admin Center</button>
+                         </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-                <div className="h-6 w-px bg-slate-200"></div>
+                {hasPermission('Admin Panel') && <div className="h-6 w-px bg-slate-200"></div>}
                 <button onClick={() => notify("New organizational update available")} className="p-2 text-slate-400 hover:text-indigo-600 relative">
                    <Bell size={20} />
                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
                 </button>
                 <div className="h-6 w-px bg-slate-200"></div>
-                <span className="hidden md:block text-[10px] font-black uppercase text-slate-400 tracking-widest">{userName}</span>
-                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-xs text-indigo-600 border border-indigo-200">{userName.charAt(0)}</div>
+                
+                <div className="relative group">
+                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                    <div className="flex flex-col items-end">
+                      <span className="hidden md:block text-[10px] font-black uppercase text-slate-900 tracking-widest">{currentUser.name}</span>
+                      <span className="hidden md:block text-[9px] font-bold text-slate-500 uppercase">{currentUser.role}</span>
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center font-bold text-xs text-indigo-600 border border-indigo-200">{currentUser.name.charAt(0)}</div>
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </button>
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 py-2 z-[60] hidden group-hover:block">
+                    <div className="px-4 py-2 border-b border-slate-100 mb-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Switch User (Demo)</p>
+                    </div>
+                    {users.map(u => (
+                      <button 
+                        key={u.id}
+                        onClick={() => {
+                          setCurrentUserId(u.id);
+                          setUserName(u.name);
+                          notify(`Switched to ${u.name} (${u.role})`);
+                        }} 
+                        className={`w-full text-left px-4 py-2 text-xs font-medium flex flex-col transition-colors ${currentUserId === u.id ? 'bg-indigo-50 text-indigo-700' : 'text-slate-700 hover:bg-slate-50'}`}
+                      >
+                        <span className="font-bold">{u.name}</span>
+                        <span className="text-[10px] text-slate-500">{u.role}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
              </div>
           </header>
         )}
@@ -245,9 +387,14 @@ const App: React.FC = () => {
                 clearDeepLink={() => setActiveProjectId(null)} 
                 triggerCreate={shouldTriggerProjectCreate}
                 onTriggerCreateHandled={() => setShouldTriggerProjectCreate(false)}
+                virtualTables={virtualTables}
+                onNavigateToAnalysis={(id) => {
+                  setActiveProjectId(id);
+                  setView(ViewState.DATA_ANALYSIS);
+                }}
               />
            )}
-           {view === ViewState.SURVEYS && <SurveyBuilder initialSurveys={surveys} setGlobalSurveys={setSurveys} onNotify={notify} activeProjectId={activeProjectId} projects={projects} />}
+           {view === ViewState.SURVEYS && <SurveyBuilder initialSurveys={surveys} setGlobalSurveys={setSurveys} onNotify={notify} activeProjectId={activeProjectId} projects={projects} virtualTables={virtualTables} />}
            {view === ViewState.ADMIN_PANEL && (
              <AdminPanel 
                projects={projects}
@@ -259,6 +406,8 @@ const App: React.FC = () => {
                setWorkflows={setWorkflows}
                dynamicForms={dynamicForms}
                setDynamicForms={setDynamicForms}
+               users={users}
+               setUsers={setUsers}
                onNotify={notify} 
              />
            )}
@@ -271,13 +420,50 @@ const App: React.FC = () => {
                 onNotify={notify} 
                 config={getPageConfig('BENEFICIARIES')} 
                 onSaveConfig={() => {}} 
+                virtualTables={virtualTables}
              />
            )}
            {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} />}
            {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={() => {}} />}
            {view === ViewState.TEAM && <TeamView onNotify={notify} />}
-           {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages([...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} />}
+           {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages(customPages.some(cp => cp.id === p.id) ? customPages.map(cp => cp.id === p.id ? p : cp) : [...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} />}
            {view === ViewState.CUSTOM_PAGE && activeCustomPage && <CustomPageView page={activeCustomPage} />}
+           {view === ViewState.DATA_ANALYSIS && (
+             <DataAnalysisView 
+               projects={projects}
+               beneficiaries={beneficiaries}
+               surveys={surveys}
+               virtualTables={virtualTables}
+               activeProjectId={activeProjectId}
+               onClearProjectFilter={() => setActiveProjectId(null)}
+             />
+           )}
+           {view === ViewState.DATASETS && (
+             <DatasetsView 
+               virtualTables={virtualTables}
+               projects={projects}
+               surveys={surveys}
+               beneficiaries={beneficiaries}
+               formSubmissions={formSubmissions}
+               onNotify={notify}
+             />
+           )}
+           {view === ViewState.FIELD_APP && (
+             <FieldAppView 
+               forms={dynamicForms}
+               projects={projects}
+               onNotify={notify}
+               onSyncSubmissions={(submissions) => setFormSubmissions(prev => [...prev, ...submissions])}
+             />
+           )}
+           {view === ViewState.AI_GENERATOR && (
+             <AIGeneratorView 
+               projects={projects}
+               surveys={surveys}
+               beneficiaries={beneficiaries}
+               onNotify={notify}
+             />
+           )}
         </div>
       </main>
     </div>

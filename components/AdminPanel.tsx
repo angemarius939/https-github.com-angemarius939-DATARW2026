@@ -17,18 +17,8 @@ import {
 import { 
   CustomPage, VirtualTable, VirtualField, 
   WorkflowAction, PageWidget, DataSourceType,
-  FormDefinition, FormFieldDefinition, Project
+  FormDefinition, FormFieldDefinition, Project, AppUser
 } from '../types';
-
-interface AppUser {
-  id: string;
-  name: string;
-  email: string;
-  role: 'Admin' | 'Project Manager' | 'Field Officer' | 'Viewer';
-  status: 'ACTIVE' | 'INACTIVE';
-  lastLogin: string;
-  department: string;
-}
 
 interface AdminPanelProps {
   projects: Project[];
@@ -40,25 +30,19 @@ interface AdminPanelProps {
   setWorkflows: (w: WorkflowAction[]) => void;
   dynamicForms: FormDefinition[];
   setDynamicForms: (f: FormDefinition[]) => void;
+  users: AppUser[];
+  setUsers: (u: AppUser[]) => void;
   onNotify: (msg: string, type?: 'success' | 'error') => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   projects, customPages, setCustomPages, virtualTables, setVirtualTables, 
-  workflows, setWorkflows, dynamicForms, setDynamicForms, onNotify 
+  workflows, setWorkflows, dynamicForms, setDynamicForms, users, setUsers, onNotify 
 }) => {
   const [activeSection, setActiveSection] = useState<'pages' | 'database' | 'workflows' | 'forms' | 'users'>('pages');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Local state for User Management demo
-  const [users, setUsers] = useState<AppUser[]>([
-    { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
-    { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
-    { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
-    { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
-  ]);
 
   // --- Form Builder Helpers ---
   const addFormField = () => {
@@ -138,9 +122,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       type: 'TEXT',
       validation: { required: false }
     };
-    const updatedTable = { ...table, fields: [...table.fields, newField] };
-    setVirtualTables(virtualTables.map(t => t.id === tableId ? updatedTable : t));
-    onNotify("New column added to table schema");
+    setEditingItem({ ...table, fields: [...table.fields, newField] });
+    setIsEditorOpen(true);
   };
 
   // --- Form Builder Logic ---
@@ -182,7 +165,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // --- User Management Logic ---
   const handleCreateUser = () => {
-    setEditingItem({ id: '', name: '', email: '', role: 'Field Officer', status: 'ACTIVE', department: '', lastLogin: 'Never' });
+    setEditingItem({ id: '', name: '', email: '', role: 'Field Officer', status: 'ACTIVE', department: '', lastLogin: 'Never', permissions: ['Projects', 'Beneficiaries', 'Field App'] });
     setIsEditorOpen(true);
   };
 
@@ -373,7 +356,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                  <div key={field.id} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-1 relative group/field">
                                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{field.type}</span>
                                     <span className="font-bold text-slate-800 text-sm">{field.label}</span>
-                                    <button className="absolute top-2 right-2 opacity-0 group-hover/field:opacity-100 text-slate-300 hover:text-red-500 transition-all"><X size={12}/></button>
+                                    <button 
+                                       onClick={() => {
+                                          const updatedTable = { ...table, fields: table.fields.filter(f => f.id !== field.id) };
+                                          setVirtualTables(virtualTables.map(t => t.id === table.id ? updatedTable : t));
+                                          onNotify("Column deleted from table schema");
+                                       }}
+                                       className="absolute top-2 right-2 opacity-0 group-hover/field:opacity-100 text-slate-300 hover:text-red-500 transition-all"
+                                    >
+                                       <X size={12}/>
+                                    </button>
                                  </div>
                                ))}
                                <button 
@@ -795,7 +787,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                     <select 
                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
                                        value={editingItem.role}
-                                       onChange={(e) => setEditingItem({...editingItem, role: e.target.value})}
+                                       onChange={(e) => {
+                                          const newRole = e.target.value;
+                                          let newPermissions = [...(editingItem.permissions || [])];
+                                          if (newRole === 'Admin') {
+                                             newPermissions = ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'];
+                                          } else if (newRole === 'Project Manager') {
+                                             newPermissions = ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'AI Generator'];
+                                          } else if (newRole === 'Field Officer') {
+                                             newPermissions = ['Projects', 'Beneficiaries', 'Field App'];
+                                          } else if (newRole === 'Viewer') {
+                                             newPermissions = ['Projects', 'Reports', 'Documents'];
+                                          }
+                                          setEditingItem({...editingItem, role: newRole, permissions: newPermissions});
+                                       }}
                                     >
                                        <option value="Admin">System Administrator</option>
                                        <option value="Project Manager">Project Manager</option>
@@ -819,6 +824,32 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                           Deactivated
                                        </button>
                                     </div>
+                                 </div>
+                              </div>
+
+                              <div className="space-y-4">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                    <ShieldCheck size={12} className="text-indigo-600"/> System Access Permissions
+                                 </label>
+                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'].map(permission => (
+                                       <label key={permission} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${editingItem.permissions?.includes(permission) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                                          <input 
+                                             type="checkbox" 
+                                             className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                             checked={editingItem.permissions?.includes(permission) || false}
+                                             onChange={(e) => {
+                                                const currentPermissions = editingItem.permissions || [];
+                                                if (e.target.checked) {
+                                                   setEditingItem({...editingItem, permissions: [...currentPermissions, permission]});
+                                                } else {
+                                                   setEditingItem({...editingItem, permissions: currentPermissions.filter((p: string) => p !== permission)});
+                                                }
+                                             }}
+                                          />
+                                          <span className={`text-sm font-bold ${editingItem.permissions?.includes(permission) ? 'text-indigo-900' : 'text-slate-600'}`}>{permission}</span>
+                                       </label>
+                                    ))}
                                  </div>
                               </div>
 
@@ -1074,8 +1105,166 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                      {/* Database Schema Editor (Placeholder) */}
                      {activeSection === 'database' && (
-                        <div className="p-20 text-center border-2 border-dashed border-slate-200 rounded-[3rem] bg-white/50 text-slate-400 font-bold uppercase text-xs tracking-widest">
-                           Design Mode active for Database Schema. Use the builder tools to configure columns and validation rules.
+                        <div className="space-y-8">
+                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Table Name</label>
+                                 <input 
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800"
+                                    value={editingItem.name}
+                                    onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                    placeholder="e.g., beneficiaries, projects, surveys"
+                                 />
+                              </div>
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Description</label>
+                                 <input 
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-600"
+                                    value={editingItem.description || ''}
+                                    onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
+                                    placeholder="What is this table for?"
+                                 />
+                              </div>
+                           </div>
+
+                           <div className="space-y-4">
+                              <div className="flex justify-between items-center px-2">
+                                 <h4 className="text-sm font-black text-slate-900 uppercase tracking-widest">Columns / Fields</h4>
+                                 <button 
+                                    onClick={() => {
+                                       const newField: VirtualField = {
+                                          id: 'f-' + Date.now(),
+                                          name: 'new_field',
+                                          label: 'New Field',
+                                          type: 'TEXT',
+                                          validation: { required: false }
+                                       };
+                                       setEditingItem({...editingItem, fields: [...(editingItem.fields || []), newField]});
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-colors"
+                                 >
+                                    <Plus size={14} /> Add Column
+                                 </button>
+                              </div>
+
+                              <div className="space-y-3">
+                                 {editingItem.fields?.map((field: VirtualField, index: number) => (
+                                    <div key={field.id} className="p-4 bg-white border border-slate-200 rounded-2xl flex items-start gap-4 group">
+                                       <div className="mt-3 text-slate-300 cursor-grab active:cursor-grabbing">
+                                          <GripVertical size={18} />
+                                       </div>
+                                       <div className="flex-1 flex flex-col gap-4">
+                                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                             <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Label</label>
+                                                <input 
+                                                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                                                   value={field.label}
+                                                   onChange={(e) => {
+                                                      const newFields = [...editingItem.fields];
+                                                      newFields[index].label = e.target.value;
+                                                      newFields[index].name = e.target.value.toLowerCase().replace(/[^a-z0-9]/g, '_');
+                                                      setEditingItem({...editingItem, fields: newFields});
+                                                   }}
+                                                />
+                                             </div>
+                                             <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Internal Name</label>
+                                                <input 
+                                                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono text-slate-500 outline-none focus:ring-1 focus:ring-indigo-500"
+                                                   value={field.name}
+                                                   onChange={(e) => {
+                                                      const newFields = [...editingItem.fields];
+                                                      newFields[index].name = e.target.value;
+                                                      setEditingItem({...editingItem, fields: newFields});
+                                                   }}
+                                                />
+                                             </div>
+                                             <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Type</label>
+                                                <select 
+                                                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                                                   value={field.type}
+                                                   onChange={(e) => {
+                                                      const newFields = [...editingItem.fields];
+                                                      newFields[index].type = e.target.value as any;
+                                                      setEditingItem({...editingItem, fields: newFields});
+                                                   }}
+                                                >
+                                                   <option value="TEXT">Short Text</option>
+                                                   <option value="NUMBER">Number</option>
+                                                   <option value="DATE">Date</option>
+                                                   <option value="BOOLEAN">Yes/No</option>
+                                                   <option value="SELECT">Dropdown</option>
+                                                </select>
+                                             </div>
+                                             <div className="space-y-1 flex items-end pb-2">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                   <input 
+                                                      type="checkbox" 
+                                                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                                      checked={field.validation?.required || false}
+                                                      onChange={(e) => {
+                                                         const newFields = [...editingItem.fields];
+                                                         newFields[index].validation = { ...newFields[index].validation, required: e.target.checked };
+                                                         setEditingItem({...editingItem, fields: newFields});
+                                                      }}
+                                                   />
+                                                   <span className="text-sm font-bold text-slate-600">Required</span>
+                                                </label>
+                                             </div>
+                                          </div>
+                                          {field.type === 'SELECT' && (
+                                             <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Dropdown Options (Comma Separated)</label>
+                                                <input 
+                                                   className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                                                   placeholder="Option 1, Option 2, Option 3"
+                                                   value={field.options?.join(', ') || ''}
+                                                   onChange={(e) => {
+                                                      const newFields = [...editingItem.fields];
+                                                      newFields[index].options = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                                      setEditingItem({...editingItem, fields: newFields});
+                                                   }}
+                                                />
+                                             </div>
+                                          )}
+                                          <div className="space-y-1">
+                                             <label className="text-[10px] font-bold text-slate-400 uppercase">Default Value (Optional)</label>
+                                             <input 
+                                                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-1 focus:ring-indigo-500"
+                                                placeholder={field.type === 'NUMBER' ? 'e.g., 0' : field.type === 'BOOLEAN' ? 'true / false' : 'Default value'}
+                                                value={field.defaultValue?.toString() || ''}
+                                                onChange={(e) => {
+                                                   const newFields = [...editingItem.fields];
+                                                   let val: any = e.target.value;
+                                                   if (field.type === 'NUMBER') val = Number(val);
+                                                   if (field.type === 'BOOLEAN') val = val.toLowerCase() === 'true';
+                                                   newFields[index].defaultValue = val;
+                                                   setEditingItem({...editingItem, fields: newFields});
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+                                       <button 
+                                          onClick={() => {
+                                             const newFields = [...editingItem.fields];
+                                             newFields.splice(index, 1);
+                                             setEditingItem({...editingItem, fields: newFields});
+                                          }}
+                                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors mt-6"
+                                       >
+                                          <Trash2 size={18} />
+                                       </button>
+                                    </div>
+                                 ))}
+                                 {(!editingItem.fields || editingItem.fields.length === 0) && (
+                                    <div className="p-12 text-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 font-bold text-sm">
+                                       No columns defined yet. Add columns to store custom data.
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
                         </div>
                      )}
 
