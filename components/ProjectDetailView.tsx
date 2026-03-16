@@ -49,6 +49,19 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
 
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
+  const [activityForm, setActivityForm] = useState<Partial<ProjectActivity>>({
+    name: '',
+    category: 'Implementation',
+    status: 'Not Started',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: new Date().toISOString().split('T')[0],
+    assignedTo: '',
+    completionPercentage: 0,
+    linkedOutputId: ''
+  });
+
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [documentForm, setDocumentForm] = useState({
     name: '',
@@ -131,6 +144,83 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
         documents: (project.documents || []).filter(d => d.id !== id)
       });
     }
+  };
+
+  const handleOpenActivityModal = (activity?: ProjectActivity) => {
+    if (activity) {
+      setEditingActivityId(activity.id);
+      setActivityForm(activity);
+    } else {
+      setEditingActivityId(null);
+      setActivityForm({
+        name: '',
+        category: 'Implementation',
+        status: 'Not Started',
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date().toISOString().split('T')[0],
+        assignedTo: '',
+        completionPercentage: 0,
+        linkedOutputId: ''
+      });
+    }
+    setIsActivityModalOpen(true);
+  };
+
+  const handleSaveActivity = () => {
+    if (!onUpdateProject || !activityForm.name || !activityForm.assignedTo) return;
+
+    const newActivity: ProjectActivity = {
+      id: editingActivityId || `act-${Date.now()}`,
+      name: activityForm.name,
+      category: activityForm.category as any,
+      status: activityForm.status as any,
+      startDate: activityForm.startDate || new Date().toISOString().split('T')[0],
+      endDate: activityForm.endDate || new Date().toISOString().split('T')[0],
+      assignedTo: activityForm.assignedTo,
+      completionPercentage: Number(activityForm.completionPercentage) || 0,
+      linkedOutputId: activityForm.linkedOutputId || ''
+    };
+
+    let updatedActivities;
+    if (editingActivityId) {
+      updatedActivities = (project.activities || []).map(a => a.id === editingActivityId ? newActivity : a);
+    } else {
+      updatedActivities = [...(project.activities || []), newActivity];
+    }
+
+    onUpdateProject({
+      ...project,
+      activities: updatedActivities
+    });
+    setIsActivityModalOpen(false);
+  };
+
+  const handleDeleteActivity = (id: string) => {
+    if (!onUpdateProject) return;
+    if (confirm("Are you sure you want to remove this activity?")) {
+      onUpdateProject({
+        ...project,
+        activities: (project.activities || []).filter(a => a.id !== id)
+      });
+    }
+  };
+
+  const handleUpdateActivityStatus = (id: string, newStatus: ProjectActivity['status']) => {
+    if (!onUpdateProject) return;
+    const updatedActivities = (project.activities || []).map(a => {
+      if (a.id === id) {
+        return { 
+          ...a, 
+          status: newStatus,
+          completionPercentage: newStatus === 'Completed' ? 100 : (newStatus === 'Not Started' ? 0 : a.completionPercentage)
+        };
+      }
+      return a;
+    });
+    onUpdateProject({
+      ...project,
+      activities: updatedActivities
+    });
   };
 
   const handleOpenRiskModal = (risk?: ProjectRisk) => {
@@ -696,19 +786,29 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
               <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
                 <CheckSquare className="text-indigo-600" size={20} /> Project Activities
               </h4>
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-                <button 
-                  onClick={() => setActivityViewMode('LIST')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activityViewMode === 'LIST' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  <List size={14} /> List View
-                </button>
-                <button 
-                  onClick={() => setActivityViewMode('BOARD')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activityViewMode === 'BOARD' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  <LayoutGrid size={14} /> Board View
-                </button>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                  <button 
+                    onClick={() => setActivityViewMode('LIST')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activityViewMode === 'LIST' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <List size={14} /> List View
+                  </button>
+                  <button 
+                    onClick={() => setActivityViewMode('BOARD')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activityViewMode === 'BOARD' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <LayoutGrid size={14} /> Board View
+                  </button>
+                </div>
+                {onUpdateProject && (
+                  <button 
+                    onClick={() => handleOpenActivityModal()}
+                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm"
+                  >
+                    <Plus size={16} /> Add Activity
+                  </button>
+                )}
               </div>
             </div>
 
@@ -727,11 +827,12 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                       <th className="pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Status</th>
                       <th className="pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Timeline</th>
                       <th className="pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400">Progress</th>
+                      {onUpdateProject && <th className="pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {project.activities.map(activity => (
-                      <tr key={activity.id} className="hover:bg-slate-50 transition-colors">
+                      <tr key={activity.id} className="hover:bg-slate-50 transition-colors group">
                         <td className="py-4 pr-4">
                           <p className="font-bold text-slate-900 text-sm">{activity.name}</p>
                           <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -766,6 +867,35 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                             <span className="text-[10px] font-black text-slate-500 w-8">{activity.completionPercentage}%</span>
                           </div>
                         </td>
+                        {onUpdateProject && (
+                          <td className="py-4 text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              {activity.status !== 'Completed' && (
+                                <button 
+                                  onClick={() => handleUpdateActivityStatus(activity.id, 'Completed')}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                  title="Mark as Completed"
+                                >
+                                  <CheckCircle size={16} />
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => handleOpenActivityModal(activity)}
+                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                title="Edit Activity"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteActivity(activity.id)}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete Activity"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -785,16 +915,40 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                       </div>
                       <div className="space-y-3 flex-1">
                         {columnActivities.map(activity => (
-                          <div key={activity.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                          <div key={activity.id} className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow group relative">
+                            {onUpdateProject && (
+                              <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm p-1 rounded-lg shadow-sm border border-slate-100">
+                                {activity.status !== 'Completed' && (
+                                  <button 
+                                    onClick={() => handleUpdateActivityStatus(activity.id, 'Completed')}
+                                    className="p-1 text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                                    title="Mark as Completed"
+                                  >
+                                    <CheckCircle size={14} />
+                                  </button>
+                                )}
+                                <button 
+                                  onClick={() => handleOpenActivityModal(activity)}
+                                  className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                                  title="Edit Activity"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteActivity(activity.id)}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete Activity"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            )}
                             <div className="flex justify-between items-start mb-2">
                               <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-500 uppercase tracking-wider">
                                 {activity.category}
                               </span>
-                              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold border ${getActivityStatusColor(activity.status)}`}>
-                                {getActivityStatusIcon(activity.status)}
-                              </span>
                             </div>
-                            <h6 className="font-bold text-slate-900 text-sm mb-3 leading-tight">{activity.name}</h6>
+                            <h6 className="font-bold text-slate-900 text-sm mb-3 leading-tight pr-12">{activity.name}</h6>
                             
                             <div className="mb-3">
                               <div className="flex justify-between text-[9px] font-bold text-slate-400 mb-1">
@@ -1381,6 +1535,138 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                 className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
               >
                 Save Document
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Modal */}
+      {isActivityModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                  <CheckSquare size={24} />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                    {editingActivityId ? 'Edit Activity' : 'Add Activity'}
+                  </h3>
+                  <p className="text-slate-500 font-medium text-sm mt-1">Track project tasks and milestones</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setIsActivityModalOpen(false)} 
+                className="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 rounded-full flex items-center justify-center transition-all shadow-sm"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Activity Name</label>
+                <input 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  placeholder="e.g., Community Sensitization" 
+                  value={activityForm.name} 
+                  onChange={e => setActivityForm({...activityForm, name: e.target.value})} 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={activityForm.category} 
+                    onChange={e => setActivityForm({...activityForm, category: e.target.value as any})}
+                  >
+                    <option value="Planning">Planning</option>
+                    <option value="Implementation">Implementation</option>
+                    <option value="Monitoring">Monitoring</option>
+                    <option value="Closure">Closure</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={activityForm.status} 
+                    onChange={e => {
+                      const newStatus = e.target.value as any;
+                      setActivityForm({
+                        ...activityForm, 
+                        status: newStatus,
+                        completionPercentage: newStatus === 'Completed' ? 100 : (newStatus === 'Not Started' ? 0 : activityForm.completionPercentage)
+                      });
+                    }}
+                  >
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Delayed">Delayed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Start Date</label>
+                  <input 
+                    type="date"
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={activityForm.startDate} 
+                    onChange={e => setActivityForm({...activityForm, startDate: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End Date</label>
+                  <input 
+                    type="date"
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={activityForm.endDate} 
+                    onChange={e => setActivityForm({...activityForm, endDate: e.target.value})} 
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Assigned To</label>
+                  <input 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    placeholder="e.g., John Doe" 
+                    value={activityForm.assignedTo} 
+                    onChange={e => setActivityForm({...activityForm, assignedTo: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Progress (%)</label>
+                    <span className="text-xs font-bold text-indigo-600">{activityForm.completionPercentage}%</span>
+                  </div>
+                  <input 
+                    type="range"
+                    min="0"
+                    max="100"
+                    className="w-full accent-indigo-600" 
+                    value={activityForm.completionPercentage} 
+                    onChange={e => setActivityForm({
+                      ...activityForm, 
+                      completionPercentage: Number(e.target.value),
+                      status: Number(e.target.value) === 100 ? 'Completed' : (Number(e.target.value) === 0 ? 'Not Started' : 'In Progress')
+                    })} 
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveActivity} 
+                disabled={!activityForm.name || !activityForm.assignedTo}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Save Activity
               </button>
             </div>
           </div>
