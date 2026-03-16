@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 /* Import missing Columns icon */
+import * as Icons from 'lucide-react';
 import { Settings, Layout, Plus, Trash2, Save, Database, Table, Grid, LayoutDashboard, X, FilePlus, Users, Shield, PieChart, BarChart as BarChartIcon, LineChart as LineChartIcon, Check, Columns } from 'lucide-react';
-import { CustomPage, DataSourceType, PageWidget, WidgetType, ChartType } from '../types';
+import { CustomPage, DataSourceType, PageWidget, WidgetType, ChartType, AppUser } from '../types';
 import { SOURCE_FIELDS } from '../constants';
 
 interface SettingsViewProps {
@@ -11,10 +12,42 @@ interface SettingsViewProps {
   onDeletePage: (pageId: string) => void;
 }
 
+const AVAILABLE_ICONS = [
+  'Layout', 'Database', 'Table', 'Grid', 'PieChart', 'BarChart', 'LineChart', 
+  'Users', 'Shield', 'FilePlus', 'Settings', 'Activity', 'AlertCircle', 
+  'Archive', 'Award', 'Bell', 'Book', 'Bookmark', 'Briefcase', 'Calendar', 
+  'Camera', 'CheckCircle', 'Clipboard', 'Clock', 'Cloud', 'Code', 'Compass', 
+  'CreditCard', 'Download', 'Edit', 'Eye', 'File', 'FileText', 'Filter', 
+  'Flag', 'Folder', 'Globe', 'Heart', 'Home', 'Image', 'Inbox', 'Info', 
+  'Key', 'Layers', 'Link', 'List', 'Lock', 'Mail', 'Map', 'MessageSquare', 
+  'Monitor', 'Package', 'Paperclip', 'Phone', 'Play', 'PlusCircle', 'Printer', 
+  'Search', 'Send', 'Share', 'ShoppingCart', 'Smartphone', 'Star', 'Tag', 
+  'Target', 'Terminal', 'ThumbsUp', 'Tool', 'Trash', 'TrendingUp', 'Truck', 
+  'Unlock', 'Upload', 'User', 'UserPlus', 'Video', 'Wifi', 'Zap'
+];
+
 const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, onDeletePage }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'pages' | 'users'>('pages');
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
   
+  const [users, setUsers] = useState<AppUser[]>([
+    { id: '1', name: 'Alice Admin', email: 'alice@example.com', role: 'Admin', status: 'ACTIVE', lastLogin: '2026-03-15', department: 'IT', permissions: ['all'] },
+    { id: '2', name: 'Bob Manager', email: 'bob@example.com', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2026-03-14', department: 'Operations', permissions: ['projects:read', 'projects:write', 'reports:read', 'reports:write'] },
+    { id: '3', name: 'Charlie Viewer', email: 'charlie@example.com', role: 'Viewer', status: 'INACTIVE', lastLogin: '2026-02-28', department: 'Finance', permissions: ['projects:read', 'reports:read'] },
+  ]);
+
+  const roles = [
+    { name: 'Admin', permissions: ['all'] },
+    { name: 'Project Manager', permissions: ['projects:read', 'projects:write', 'reports:read', 'reports:write'] },
+    { name: 'Field Officer', permissions: ['projects:read', 'data:write'] },
+    { name: 'Viewer', permissions: ['projects:read', 'reports:read'] }
+  ];
+
+  const handleRoleChange = (userId: string, newRole: 'Admin' | 'Project Manager' | 'Field Officer' | 'Viewer') => {
+    const roleObj = roles.find(r => r.name === newRole);
+    setUsers(users.map(u => u.id === userId ? { ...u, role: newRole, permissions: roleObj?.permissions || [] } : u));
+  };
+
   const [newPage, setNewPage] = useState<Partial<CustomPage>>({
     name: '',
     description: '',
@@ -162,11 +195,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                   </div>
                 )}
                 
-                {customPages.map(page => (
+                {customPages.map(page => {
+                  const PageIcon = (Icons as any)[page.icon || 'Layout'] || Layout;
+                  return (
                   <div key={page.id} className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex justify-between items-center group">
                     <div className="flex items-center gap-4">
                        <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                         <Layout size={24} />
+                         <PageIcon size={24} />
                        </div>
                        <div>
                          <h3 className="font-bold text-slate-900">{page.name}</h3>
@@ -182,7 +217,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                        </button>
                     </div>
                   </div>
-                ))}
+                )})}
               </div>
             </div>
           )}
@@ -194,8 +229,78 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
           )}
           
           {activeTab === 'users' && (
-             <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center text-slate-500">
-               User Management Placeholder
+             <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <div>
+                     <h2 className="text-lg font-bold text-slate-900">User Management</h2>
+                     <p className="text-sm text-slate-500">Manage user roles and permissions.</p>
+                  </div>
+                  <button className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-indigo-700 flex items-center gap-2 shadow-sm">
+                    <Plus size={18} /> Add User
+                  </button>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 text-sm">
+                        <th className="pb-3 font-medium">User</th>
+                        <th className="pb-3 font-medium">Role</th>
+                        <th className="pb-3 font-medium">Permissions</th>
+                        <th className="pb-3 font-medium">Status</th>
+                        <th className="pb-3 font-medium text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {users.map(user => (
+                        <tr key={user.id} className="border-b border-slate-100 hover:bg-slate-50">
+                          <td className="py-4">
+                            <div className="font-bold text-slate-900">{user.name}</div>
+                            <div className="text-xs text-slate-500">{user.email}</div>
+                          </td>
+                          <td className="py-4">
+                            <select 
+                              className="p-2 border border-slate-200 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-indigo-500"
+                              value={user.role}
+                              onChange={(e) => handleRoleChange(user.id, e.target.value as any)}
+                            >
+                              {roles.map(r => (
+                                <option key={r.name} value={r.name}>{r.name}</option>
+                              ))}
+                            </select>
+                          </td>
+                          <td className="py-4">
+                            <div className="flex flex-wrap gap-1">
+                              {user.permissions.slice(0, 2).map(p => (
+                                <span key={p} className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider rounded-md">
+                                  {p}
+                                </span>
+                              ))}
+                              {user.permissions.length > 2 && (
+                                <span className="px-2 py-1 bg-slate-100 text-slate-600 text-[10px] font-bold uppercase tracking-wider rounded-md">
+                                  +{user.permissions.length - 2}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-4">
+                            <span className={`px-2 py-1 text-xs font-bold rounded-full ${user.status === 'ACTIVE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                              {user.status}
+                            </span>
+                          </td>
+                          <td className="py-4 text-right">
+                            <button className="text-slate-400 hover:text-indigo-600 p-2">
+                              <Settings size={16} />
+                            </button>
+                            <button className="text-slate-400 hover:text-red-600 p-2">
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
             </div>
           )}
         </div>
@@ -240,24 +345,25 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                         />
                      </div>
                      <div className="col-span-2">
-                        <label className="block text-sm font-bold text-slate-700 mb-1">Icon</label>
-                        <select 
-                          className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                          value={newPage.icon || 'Layout'}
-                          onChange={(e) => setNewPage({...newPage, icon: e.target.value})}
-                        >
-                          <option value="Layout">Layout</option>
-                          <option value="Database">Database</option>
-                          <option value="Table">Table</option>
-                          <option value="Grid">Grid</option>
-                          <option value="PieChart">Pie Chart</option>
-                          <option value="BarChartIcon">Bar Chart</option>
-                          <option value="LineChartIcon">Line Chart</option>
-                          <option value="Users">Users</option>
-                          <option value="Shield">Shield</option>
-                          <option value="FilePlus">File Plus</option>
-                          <option value="Settings">Settings</option>
-                        </select>
+                        <label className="block text-sm font-bold text-slate-700 mb-2">Icon</label>
+                        <div className="grid grid-cols-8 sm:grid-cols-10 md:grid-cols-12 gap-2 max-h-48 overflow-y-auto p-2 border border-slate-200 rounded-lg bg-slate-50 custom-scrollbar">
+                          {AVAILABLE_ICONS.map(iconName => {
+                            const IconComponent = (Icons as any)[iconName];
+                            if (!IconComponent) return null;
+                            const isSelected = newPage.icon === iconName || (!newPage.icon && iconName === 'Layout');
+                            return (
+                              <button
+                                key={iconName}
+                                type="button"
+                                onClick={() => setNewPage({...newPage, icon: iconName})}
+                                className={`p-2 rounded-lg flex items-center justify-center transition-all ${isSelected ? 'bg-indigo-600 text-white shadow-md scale-110' : 'bg-white text-slate-500 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200'}`}
+                                title={iconName}
+                              >
+                                <IconComponent size={20} />
+                              </button>
+                            );
+                          })}
+                        </div>
                      </div>
                   </div>
 

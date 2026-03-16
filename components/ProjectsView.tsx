@@ -991,12 +991,12 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                                      <span className="font-black text-indigo-600">{ind.achieved} {ind.unit}</span>
                                                      <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                                         <div 
-                                                           className={`h-full rounded-full ${ind.achieved >= ind.overallTarget ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                                                           style={{ width: `${Math.min(100, ind.overallTarget > 0 ? (ind.achieved / ind.overallTarget) * 100 : 0)}%` }}
+                                                           className={`h-full rounded-full ${Number(ind.achieved) >= Number(ind.overallTarget) ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                                                           style={{ width: `${Math.min(100, Number(ind.overallTarget) > 0 ? (Number(ind.achieved) / Number(ind.overallTarget)) * 100 : 0)}%` }}
                                                         ></div>
                                                      </div>
                                                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                        {ind.overallTarget > 0 ? Math.round((ind.achieved / ind.overallTarget) * 100) : 0}% Achieved
+                                                        {Number(ind.overallTarget) > 0 ? Math.round((Number(ind.achieved) / Number(ind.overallTarget)) * 100) : 0}% Achieved
                                                      </span>
                                                   </div>
                                                </td>

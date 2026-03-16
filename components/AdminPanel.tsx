@@ -14,6 +14,7 @@ import {
   Trash, UserPlus, UserCheck, UserX, User, ShieldCheck,
   MoreVertical, ShieldAlert, Users, Filter, FolderKanban, Link2
 } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { 
   CustomPage, VirtualTable, VirtualField, 
   WorkflowAction, PageWidget, DataSourceType,
@@ -286,7 +287,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       return (
                         <div key={page.id} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-300 transition-all">
                           <div className="flex items-center gap-4">
-                              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><Layout size={24}/></div>
+                              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                                {(() => {
+                                  const PageIcon = (Icons as any)[page.icon || 'Layout'] || Layout;
+                                  return <PageIcon size={24}/>;
+                                })()}
+                              </div>
                               <div>
                                 <div className="flex items-center gap-2">
                                     <h4 className="font-black text-slate-900">{page.name}</h4>

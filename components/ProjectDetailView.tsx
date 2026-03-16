@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
+import { RichTextEditor } from './RichTextEditor';
 
 interface ProjectDetailViewProps {
   project: Project;
@@ -46,6 +47,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
   const [narrativeText, setNarrativeText] = useState(project.narrative || '');
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
 
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [documentForm, setDocumentForm] = useState({
@@ -599,16 +601,17 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
             
             <div className="mb-8">
               {isEditingNarrative ? (
-                <textarea
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 min-h-[150px] font-medium text-slate-700"
-                  placeholder="Enter project narrative, summary, or key notes..."
-                  value={narrativeText}
-                  onChange={(e) => setNarrativeText(e.target.value)}
+                <RichTextEditor 
+                  content={narrativeText} 
+                  onChange={setNarrativeText} 
                 />
               ) : (
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 min-h-[100px]">
                   {project.narrative ? (
-                    <p className="text-slate-700 whitespace-pre-wrap">{project.narrative}</p>
+                    <div 
+                      className="prose prose-sm sm:prose-base max-w-none text-slate-700" 
+                      dangerouslySetInnerHTML={{ __html: project.narrative }} 
+                    />
                   ) : (
                     <p className="text-slate-400 italic">No narrative recorded for this project yet.</p>
                   )}
@@ -872,6 +875,69 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
             </div>
           )}
 
+          {/* Results Framework Section */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Target className="text-indigo-600" size={20} /> Results Framework (M&E)
+              </h4>
+              <button className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-100 transition-all">
+                <Plus size={14} /> Add Indicator
+              </button>
+            </div>
+            {project.indicators && project.indicators.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse min-w-[1000px]">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-slate-50">
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-tl-xl">Level</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Expected Results</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Indicators</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Baseline Data</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Targets</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Data Sources</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Data Collection Methods</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Frequency</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Responsibility</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-tr-xl">Timeline/Years</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {project.indicators.map((indicator, idx) => (
+                      <tr key={indicator.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                        <td className="p-3">
+                          <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            indicator.level === 'Goal' ? 'bg-purple-100 text-purple-700' :
+                            indicator.level === 'Impact' ? 'bg-indigo-100 text-indigo-700' :
+                            indicator.level === 'Outcome' || indicator.level === 'Secondary Outcome' ? 'bg-blue-100 text-blue-700' :
+                            indicator.level === 'Output' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-slate-200 text-slate-700'
+                          }`}>
+                            {indicator.level}
+                          </span>
+                        </td>
+                        <td className="p-3 text-xs font-medium text-slate-700">{indicator.expectedResult || '-'}</td>
+                        <td className="p-3 text-xs font-bold text-slate-900">{indicator.name}</td>
+                        <td className="p-3 text-xs text-slate-600">{indicator.baseline} {indicator.unit}</td>
+                        <td className="p-3 text-xs font-bold text-indigo-600">{indicator.overallTarget} {indicator.unit}</td>
+                        <td className="p-3 text-xs text-slate-600">{indicator.dataSource || '-'}</td>
+                        <td className="p-3 text-xs text-slate-600">{indicator.dataCollectionMethod || '-'}</td>
+                        <td className="p-3 text-xs text-slate-600">{indicator.frequency}</td>
+                        <td className="p-3 text-xs text-slate-600">{indicator.responsible}</td>
+                        <td className="p-3 text-xs text-slate-600">{indicator.timeline || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <Target size={32} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-500 font-medium text-sm">No indicators defined for this project.</p>
+              </div>
+            )}
+          </div>
+
           {/* Risks Section */}
           <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
             <div className="flex justify-between items-center mb-6">
@@ -886,74 +952,142 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
               </button>
             </div>
             {project.risks && project.risks.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {project.risks.map(risk => {
-                  const isHighImpact = risk.impact === 'High';
-                  const isHighProb = risk.probability === 'High';
-                  const isCritical = isHighImpact && isHighProb;
-                  
-                  return (
-                    <div key={risk.id} className={`p-5 rounded-2xl border flex flex-col relative group transition-all ${
-                      isCritical ? 'bg-red-50/50 border-red-100 hover:border-red-200 hover:shadow-md' : 
-                      isHighImpact ? 'bg-orange-50/50 border-orange-100 hover:border-orange-200 hover:shadow-md' :
-                      'bg-slate-50 border-slate-100 hover:border-slate-200 hover:shadow-sm'
-                    }`}>
-                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10">
-                        <button onClick={() => handleOpenRiskModal(risk)} className="p-1.5 bg-white text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
-                          <Edit2 size={14} />
-                        </button>
-                        <button onClick={() => handleDeleteRisk(risk.id)} className="p-1.5 bg-white text-slate-400 hover:text-red-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+              <div className="flex flex-col lg:flex-row gap-8">
+                <div className="w-full lg:w-1/2">
+                  <div className="grid grid-cols-3 grid-rows-3 gap-2 aspect-square relative pl-6 pb-6">
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold text-slate-400 tracking-widest uppercase origin-center">Probability</span>
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 text-xs font-bold text-slate-400 tracking-widest uppercase">Impact</span>
+                    
+                    {[
+                      { prob: 'High', impact: 'Low' }, { prob: 'High', impact: 'Medium' }, { prob: 'High', impact: 'High' },
+                      { prob: 'Medium', impact: 'Low' }, { prob: 'Medium', impact: 'Medium' }, { prob: 'Medium', impact: 'High' },
+                      { prob: 'Low', impact: 'Low' }, { prob: 'Low', impact: 'Medium' }, { prob: 'Low', impact: 'High' }
+                    ].map((cell, i) => {
+                      const cellRisks = project.risks!.filter(r => r.probability === cell.prob && r.impact === cell.impact);
+                      const getRiskColor = (prob: string, impact: string) => {
+                        if (prob === 'High' && impact === 'High') return 'bg-red-500';
+                        if (prob === 'High' && impact === 'Medium') return 'bg-orange-500';
+                        if (prob === 'High' && impact === 'Low') return 'bg-amber-400';
+                        if (prob === 'Medium' && impact === 'High') return 'bg-orange-500';
+                        if (prob === 'Medium' && impact === 'Medium') return 'bg-amber-400';
+                        if (prob === 'Medium' && impact === 'Low') return 'bg-emerald-400';
+                        if (prob === 'Low' && impact === 'High') return 'bg-amber-400';
+                        if (prob === 'Low' && impact === 'Medium') return 'bg-emerald-400';
+                        if (prob === 'Low' && impact === 'Low') return 'bg-emerald-500';
+                        return 'bg-slate-300';
+                      };
+                      const getBgColor = (prob: string, impact: string) => {
+                        if (prob === 'High' && impact === 'High') return 'bg-red-50';
+                        if (prob === 'High' && impact === 'Medium') return 'bg-orange-50';
+                        if (prob === 'High' && impact === 'Low') return 'bg-amber-50';
+                        if (prob === 'Medium' && impact === 'High') return 'bg-orange-50';
+                        if (prob === 'Medium' && impact === 'Medium') return 'bg-amber-50';
+                        if (prob === 'Medium' && impact === 'Low') return 'bg-emerald-50';
+                        if (prob === 'Low' && impact === 'High') return 'bg-amber-50';
+                        if (prob === 'Low' && impact === 'Medium') return 'bg-emerald-50';
+                        if (prob === 'Low' && impact === 'Low') return 'bg-emerald-50';
+                        return 'bg-slate-50';
+                      };
                       
-                      <div className="flex items-center gap-3 mb-3">
-                        <div className="flex gap-1.5">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            risk.impact === 'High' ? 'bg-red-100 text-red-700' :
-                            risk.impact === 'Medium' ? 'bg-amber-100 text-amber-700' :
-                            'bg-emerald-100 text-emerald-700'
-                          }`} title="Impact">
-                            {risk.impact} Impact
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                            risk.probability === 'High' ? 'bg-orange-100 text-orange-700' :
-                            risk.probability === 'Medium' ? 'bg-blue-100 text-blue-700' :
-                            'bg-slate-200 text-slate-700'
-                          }`} title="Probability">
-                            {risk.probability} Prob
-                          </span>
+                      return (
+                        <div key={i} className={`rounded-xl border border-slate-200 p-2 flex flex-col items-center justify-center ${getBgColor(cell.prob, cell.impact)} transition-all relative group`}>
+                          <span className="text-[10px] font-bold text-slate-400 mb-2 opacity-0 group-hover:opacity-100 absolute top-2 transition-opacity">{cell.prob} / {cell.impact}</span>
+                          <div className="flex flex-wrap gap-1.5 justify-center z-10">
+                            {cellRisks.map(r => (
+                              <button 
+                                key={r.id}
+                                onClick={() => setSelectedRiskId(r.id === selectedRiskId ? null : r.id)}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform hover:scale-110 ${getRiskColor(r.probability, r.impact)} ${selectedRiskId === r.id ? 'ring-4 ring-offset-2 ring-indigo-600 scale-110' : ''}`}
+                                title={r.description}
+                              >
+                                {r.id.substring(0, 2).toUpperCase()}
+                              </button>
+                            ))}
+                          </div>
                         </div>
-                        <span className="text-xs font-bold text-slate-500 ml-auto pr-16">{risk.category}</span>
-                      </div>
-                      
-                      <p className={`font-bold text-sm mb-3 flex-1 ${isCritical ? 'text-red-900' : 'text-slate-900'}`}>
-                        {isCritical && <AlertTriangle size={14} className="inline mr-1.5 text-red-500 mb-0.5" />}
-                        {risk.description}
-                      </p>
-                      
-                      <div className="bg-white/60 p-3 rounded-xl border border-white/40 mb-4 text-xs">
-                        <span className="font-bold text-slate-700 block mb-1">Mitigation:</span> 
-                        <span className="text-slate-600">{risk.mitigationStrategy || 'No mitigation strategy defined.'}</span>
-                      </div>
-                      
-                      <div className="flex justify-between items-center pt-3 border-t border-slate-200/50 mt-auto">
-                        <div>
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner</p>
-                          <p className="text-xs font-bold text-slate-900">{risk.owner}</p>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="w-full lg:w-1/2">
+                  {selectedRiskId ? (() => {
+                    const risk = project.risks!.find(r => r.id === selectedRiskId);
+                    if (!risk) return null;
+                    const isHighImpact = risk.impact === 'High';
+                    const isHighProb = risk.probability === 'High';
+                    const isCritical = isHighImpact && isHighProb;
+                    return (
+                      <div className={`p-6 rounded-2xl border flex flex-col h-full relative group transition-all ${
+                        isCritical ? 'bg-red-50/50 border-red-100' : 
+                        isHighImpact ? 'bg-orange-50/50 border-orange-100' :
+                        'bg-slate-50 border-slate-100'
+                      }`}>
+                        <div className="absolute top-4 right-4 flex gap-2 z-10">
+                          <button onClick={() => handleOpenRiskModal(risk)} className="p-1.5 bg-white text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => {
+                            handleDeleteRisk(risk.id);
+                            setSelectedRiskId(null);
+                          }} className="p-1.5 bg-white text-slate-400 hover:text-red-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
+                            <Trash2 size={14} />
+                          </button>
                         </div>
-                        <div className="text-right">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
-                          <p className={`text-xs font-bold ${
-                            risk.status === 'Open' || risk.status === 'Active' ? 'text-amber-600' : 
-                            risk.status === 'Realized' ? 'text-red-600' : 
-                            'text-emerald-600'
-                          }`}>{risk.status}</p>
+                        
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="flex gap-1.5">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              risk.impact === 'High' ? 'bg-red-100 text-red-700' :
+                              risk.impact === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                              'bg-emerald-100 text-emerald-700'
+                            }`} title="Impact">
+                              {risk.impact} Impact
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                              risk.probability === 'High' ? 'bg-orange-100 text-orange-700' :
+                              risk.probability === 'Medium' ? 'bg-blue-100 text-blue-700' :
+                              'bg-slate-200 text-slate-700'
+                            }`} title="Probability">
+                              {risk.probability} Prob
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-slate-500 ml-auto pr-16">{risk.category}</span>
+                        </div>
+                        
+                        <p className={`font-bold text-lg mb-4 flex-1 ${isCritical ? 'text-red-900' : 'text-slate-900'}`}>
+                          {isCritical && <AlertTriangle size={18} className="inline mr-1.5 text-red-500 mb-0.5" />}
+                          {risk.description}
+                        </p>
+                        
+                        <div className="bg-white/80 p-4 rounded-xl border border-white/40 mb-6 text-sm">
+                          <span className="font-bold text-slate-700 block mb-2">Mitigation Strategy:</span> 
+                          <span className="text-slate-600 leading-relaxed">{risk.mitigationStrategy || 'No mitigation strategy defined.'}</span>
+                        </div>
+                        
+                        <div className="flex justify-between items-center pt-4 border-t border-slate-200/50 mt-auto">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner</p>
+                            <p className="text-sm font-bold text-slate-900">{risk.owner}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
+                            <p className={`text-sm font-bold ${
+                              risk.status === 'Open' || risk.status === 'Active' ? 'text-amber-600' : 
+                              risk.status === 'Realized' ? 'text-red-600' : 
+                              'text-emerald-600'
+                            }`}>{risk.status}</p>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })() : (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                      <LayoutGrid size={48} className="text-slate-300 mb-4" />
+                      <p className="text-slate-600 font-bold text-lg mb-2">Select a Risk</p>
+                      <p className="text-slate-500 text-sm">Click on any risk bubble in the grid to view its full details and mitigation strategy.</p>
                     </div>
-                  );
-                })}
+                  )}
+                </div>
               </div>
             ) : (
               <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">

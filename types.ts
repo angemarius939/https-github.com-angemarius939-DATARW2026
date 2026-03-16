@@ -94,15 +94,19 @@ export interface ProjectIndicator {
   id: string;
   code: string;
   name: string;
-  level: 'Impact' | 'Outcome' | 'Output';
+  expectedResult?: string;
+  level: 'Goal' | 'Impact' | 'Secondary Outcome' | 'Outcome' | 'Output' | 'Activity';
   unit: string;
-  frequency: 'Monthly' | 'Quarterly' | 'Annually';
-  baseline: number;
-  overallTarget: number;
-  achieved: number;
+  frequency: string;
+  baseline: number | string;
+  overallTarget: number | string;
+  achieved: number | string;
   periodicData: IndicatorTarget[];
   dataSource: string;
+  dataCollectionMethod?: string;
   responsible: string;
+  reporting?: string;
+  timeline?: string;
   linkedLogframeId?: string;
 }
 
@@ -150,6 +154,8 @@ export interface Beneficiary {
   idNumber?: string;
   educationLevel?: 'None' | 'Primary' | 'Secondary' | 'TVET' | 'University';
   householdSize?: number;
+  vulnerabilityScore?: number;
+  needs?: string[];
   customFields?: Record<string, any>;
 }
 

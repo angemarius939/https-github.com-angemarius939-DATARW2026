@@ -24,6 +24,7 @@ import {
   FolderOpen, BarChart3, Database, MessageSquare,
   Edit3, Plus, Table as TableIcon, FilePlus, LineChart, Smartphone, BrainCircuit, Bot
 } from 'lucide-react';
+import * as Icons from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(ViewState.LANDING);
@@ -73,7 +74,44 @@ const App: React.FC = () => {
 
   const [projects, setProjects] = useState<Project[]>([
     { 
-      id: '1', name: 'Clean Water Initiative', description: 'Providing clean and safe drinking water to rural communities.', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', endDate: '2025-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
+      id: '1', name: 'Clean Water Initiative', description: 'Providing clean and safe drinking water to rural communities.', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', endDate: '2025-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], 
+      narrative: '<h2>Project Overview</h2><p>The Clean Water Initiative is a comprehensive program designed to address the critical lack of safe drinking water in the Northern Province.</p><h3>Key Objectives</h3><ul><li>Drill 5 new boreholes in Musanze district.</li><li>Provide hygiene and sanitation training to 1,200 community members.</li><li>Establish local water management committees to ensure long-term sustainability.</li></ul><blockquote><p>"Access to clean water is not just a health issue; it is a fundamental human right that empowers communities." - Project Manager</p></blockquote><p>Recent progress has been excellent, with 3 boreholes already operational and training sessions scheduled for the upcoming month.</p>',
+      indicators: [
+        {
+          id: 'ind1',
+          code: 'G1',
+          name: 'Reduction in waterborne diseases',
+          expectedResult: 'Improved health outcomes in target communities',
+          level: 'Goal',
+          unit: '%',
+          frequency: 'Annually',
+          baseline: '15',
+          overallTarget: '5',
+          achieved: '10',
+          periodicData: [],
+          dataSource: 'District Health Records',
+          dataCollectionMethod: 'Health Center Reports',
+          responsible: 'M&E Officer',
+          timeline: '2024-2026'
+        },
+        {
+          id: 'ind2',
+          code: 'O1',
+          name: 'Number of functional boreholes',
+          expectedResult: 'Increased access to clean water sources',
+          level: 'Output',
+          unit: 'boreholes',
+          frequency: 'Quarterly',
+          baseline: '0',
+          overallTarget: '5',
+          achieved: '3',
+          periodicData: [],
+          dataSource: 'Project Field Reports',
+          dataCollectionMethod: 'Site Visits',
+          responsible: 'Project Manager',
+          timeline: 'Year 1 (2024)'
+        }
+      ],
       thematicAreas: ['WASH', 'Health'],
       interventions: [
         { id: 'i1', name: 'Borehole Drilling', type: 'Infrastructure', targetDemographic: 'Rural Communities', startDate: '2024-02-01', endDate: '2024-08-01', status: 'Completed', budgetAllocated: 20000000, beneficiariesReached: 800, description: 'Drilling 5 new boreholes in Musanze district.' },
@@ -243,11 +281,13 @@ const App: React.FC = () => {
              {customPages.length > 0 && (
                <>
                  <div className="pt-4 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">Custom Modules</div>
-                 {customPages.map(page => (
-                    <button key={page.id} onClick={() => handleCustomPageClick(page)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.CUSTOM_PAGE && activeCustomPage?.id === page.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-                      <Layout size={18} /> {page.name}
-                    </button>
-                 ))}
+                 {customPages.map(page => {
+                    const PageIcon = (Icons as any)[page.icon || 'Layout'] || Layout;
+                    return (
+                     <button key={page.id} onClick={() => handleCustomPageClick(page)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.CUSTOM_PAGE && activeCustomPage?.id === page.id ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                       <PageIcon size={18} /> {page.name}
+                     </button>
+                  )})}
                </>
              )}
 

@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { CustomPage } from '../types';
+import * as Icons from 'lucide-react';
 import { Database, Layout } from 'lucide-react';
 import { WidgetRenderer } from './WidgetRenderer';
 
@@ -9,12 +10,14 @@ interface CustomPageViewProps {
 }
 
 const CustomPageView: React.FC<CustomPageViewProps> = ({ page }) => {
+  const PageIcon = (Icons as any)[page.icon || 'Layout'] || Layout;
+
   return (
     <div className="max-w-7xl mx-auto p-8 animate-fade-in pb-20">
        <div className="mb-12">
           <div className="flex items-center gap-4 mb-4">
              <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-xl shadow-indigo-100/50">
-                {page.icon === 'Layout' ? <Layout size={32} /> : <Database size={32} />}
+                <PageIcon size={32} />
              </div>
              <div>
                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">{page.name}</h1>

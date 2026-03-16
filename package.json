@@ -11,6 +11,9 @@
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
+    "@tailwindcss/typography": "^0.5.19",
+    "@tiptap/react": "^3.20.2",
+    "@tiptap/starter-kit": "^3.20.2",
     "lucide-react": "^0.554.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",

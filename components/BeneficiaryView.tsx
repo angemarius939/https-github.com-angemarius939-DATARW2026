@@ -6,7 +6,7 @@ import {
   MapPin, GraduationCap, Home, Calendar, 
   Download, UserCheck, UserPlus, X, Check, Loader2, 
   Sliders, Settings, User, Hash, Info, ChevronRight,
-  FilterX, Printer
+  FilterX, Printer, FileText, Smartphone
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
