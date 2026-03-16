@@ -21,13 +21,14 @@ interface DataAnalysisViewProps {
 }
 
 type DatasetType = 'projects' | 'beneficiaries' | 'surveys';
-type AnalysisType = 'descriptive' | 'inferential';
+type AnalysisType = 'descriptive' | 'inferential' | 'multivariable';
 
 export default function DataAnalysisView({ projects, beneficiaries, surveys, virtualTables, activeProjectId, onClearProjectFilter }: DataAnalysisViewProps) {
   const [dataset, setDataset] = useState<DatasetType>('beneficiaries');
   const [analysisType, setAnalysisType] = useState<AnalysisType>('descriptive');
   const [variableX, setVariableX] = useState<string>('');
   const [variableY, setVariableY] = useState<string>('');
+  const [selectedVariables, setSelectedVariables] = useState<string[]>([]);
   
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
@@ -234,6 +235,68 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
     return { type: 'unsupported' };
   };
 
+  const generateMultivariableStats = () => {
+    if (selectedVariables.length < 2) return null;
+    
+    const data = getFilteredData();
+    const numericVars = selectedVariables.filter(v => isNumericField(v));
+
+    let correlationMatrix: any = null;
+    if (numericVars.length >= 2) {
+       correlationMatrix = [];
+       for (let i = 0; i < numericVars.length; i++) {
+         const row: any = { name: numericVars[i] };
+         for (let j = 0; j < numericVars.length; j++) {
+            if (i === j) {
+              row[numericVars[j]] = 1;
+            } else {
+              const points = data.map(d => ({
+                x: Number(getValue(d, numericVars[i])) || 0,
+                y: Number(getValue(d, numericVars[j])) || 0
+              }));
+              const n = points.length;
+              if (n === 0) { row[numericVars[j]] = 0; continue; }
+              const sumX = points.reduce((acc, p) => acc + p.x, 0);
+              const sumY = points.reduce((acc, p) => acc + p.y, 0);
+              const sumXY = points.reduce((acc, p) => acc + (p.x * p.y), 0);
+              const sumX2 = points.reduce((acc, p) => acc + (p.x * p.x), 0);
+              const sumY2 = points.reduce((acc, p) => acc + (p.y * p.y), 0);
+              const numerator = (n * sumXY) - (sumX * sumY);
+              const denominator = Math.sqrt(((n * sumX2) - (sumX * sumX)) * ((n * sumY2) - (sumY * sumY)));
+              const correlation = denominator === 0 ? 0 : numerator / denominator;
+              row[numericVars[j]] = Number(correlation.toFixed(3));
+            }
+         }
+         correlationMatrix.push(row);
+       }
+    }
+
+    const summary = selectedVariables.map(v => {
+       const isNum = isNumericField(v);
+       if (isNum) {
+          const values = data.map(d => Number(getValue(d, v)) || 0).filter(val => !isNaN(val));
+          const sum = values.reduce((a, b) => a + b, 0);
+          const mean = values.length ? sum / values.length : 0;
+          return { variable: v, type: 'Numeric', metric: 'Mean', value: mean.toFixed(2) };
+       } else {
+          const counts: Record<string, number> = {};
+          data.forEach(d => {
+            const val = String(getValue(d, v) || 'Unknown');
+            counts[val] = (counts[val] || 0) + 1;
+          });
+          const topCategory = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+          return { variable: v, type: 'Categorical', metric: 'Top Category', value: topCategory ? `${topCategory[0]} (${topCategory[1]})` : 'N/A' };
+       }
+    });
+
+    return {
+      type: 'multivariable',
+      correlationMatrix,
+      summary,
+      numericVars
+    };
+  };
+
   const generateAIInsights = async () => {
     setIsGeneratingInsights(true);
     setError(null);
@@ -248,9 +311,12 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
       if (analysisType === 'descriptive') {
         const stats = generateDescriptiveStats();
         promptContext += `Variable: ${variableX}\nResults: ${JSON.stringify(stats)}\n`;
-      } else {
+      } else if (analysisType === 'inferential') {
         const stats = generateInferentialStats();
         promptContext += `Variable X: ${variableX}\nVariable Y: ${variableY}\nResults: ${JSON.stringify(stats)}\n`;
+      } else if (analysisType === 'multivariable') {
+        const stats = generateMultivariableStats();
+        promptContext += `Selected Variables: ${selectedVariables.join(', ')}\nResults: ${JSON.stringify(stats)}\n`;
       }
 
       const prompt = `
@@ -375,6 +441,84 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
     );
   };
 
+  const renderMultivariableResults = () => {
+    const results = generateMultivariableStats();
+    if (!results) return (
+      <div className="p-6 bg-amber-50 border border-amber-100 rounded-2xl flex items-start gap-3 text-amber-800">
+        <AlertCircle size={20} className="shrink-0 mt-0.5" />
+        <div>
+          <h4 className="font-bold">Select Variables</h4>
+          <p className="text-sm mt-1">Please select at least 2 variables for multivariable analysis.</p>
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="space-y-8 mb-8">
+        <div>
+           <h3 className="text-lg font-black text-slate-800 mb-4">Variables Summary</h3>
+           <div className="overflow-x-auto">
+             <table className="w-full text-sm text-left">
+               <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                 <tr>
+                   <th className="px-4 py-3">Variable</th>
+                   <th className="px-4 py-3">Type</th>
+                   <th className="px-4 py-3">Key Metric</th>
+                   <th className="px-4 py-3">Value</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-100">
+                 {results.summary.map((s: any, idx: number) => (
+                   <tr key={idx}>
+                     <td className="px-4 py-3 font-bold text-slate-700">{s.variable}</td>
+                     <td className="px-4 py-3 text-slate-500">{s.type}</td>
+                     <td className="px-4 py-3 text-slate-500">{s.metric}</td>
+                     <td className="px-4 py-3 font-mono font-bold text-indigo-600">{s.value}</td>
+                   </tr>
+                 ))}
+               </tbody>
+             </table>
+           </div>
+        </div>
+
+        {results.correlationMatrix && results.numericVars.length >= 2 && (
+          <div>
+            <h3 className="text-lg font-black text-slate-800 mb-4">Correlation Matrix (Numeric)</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-center">
+                <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <tr>
+                    <th className="px-4 py-3 text-left">Variable</th>
+                    {results.numericVars.map((v: string) => (
+                      <th key={v} className="px-4 py-3">{v}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {results.correlationMatrix.map((row: any, idx: number) => (
+                    <tr key={idx}>
+                      <td className="px-4 py-3 font-bold text-slate-700 text-left">{row.name}</td>
+                      {results.numericVars.map((v: string) => {
+                         const val = row[v];
+                         const absVal = Math.abs(val);
+                         const bgColor = absVal === 1 ? 'bg-slate-100' : absVal > 0.7 ? 'bg-indigo-200' : absVal > 0.4 ? 'bg-indigo-100' : 'bg-white';
+                         return (
+                           <td key={v} className={`px-4 py-3 font-mono font-bold ${bgColor}`}>
+                             {val}
+                           </td>
+                         );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in pb-20 h-full flex flex-col">
       <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-[0.2em] mb-3">
@@ -434,6 +578,12 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
               >
                 Inferential
               </button>
+              <button
+                onClick={() => { setAnalysisType('multivariable'); setAiInsights(null); }}
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${analysisType === 'multivariable' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Multivariable
+              </button>
             </div>
           </div>
 
@@ -442,34 +592,62 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
               <Activity size={16} className="text-indigo-500" /> 3. Select Variables
             </h3>
             <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Primary Variable (X)</label>
-                <select 
-                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
-                  value={variableX}
-                  onChange={(e) => { setVariableX(e.target.value); setAiInsights(null); }}
-                >
-                  <option value="">-- Select Variable --</option>
-                  {variables.map(v => (
-                    <option key={v.value} value={v.value}>{v.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {analysisType === 'inferential' && (
+              {analysisType === 'multivariable' ? (
                 <div>
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Secondary Variable (Y)</label>
-                  <select 
-                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
-                    value={variableY}
-                    onChange={(e) => { setVariableY(e.target.value); setAiInsights(null); }}
-                  >
-                    <option value="">-- Select Variable --</option>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Select Variables</label>
+                  <div className="space-y-2 max-h-60 overflow-y-auto custom-scrollbar">
                     {variables.map(v => (
-                      <option key={v.value} value={v.value}>{v.label}</option>
+                      <label key={v.value} className="flex items-center gap-2 p-2 hover:bg-slate-50 rounded-lg cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          checked={selectedVariables.includes(v.value)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedVariables([...selectedVariables, v.value]);
+                            } else {
+                              setSelectedVariables(selectedVariables.filter(sv => sv !== v.value));
+                            }
+                            setAiInsights(null);
+                          }}
+                          className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <span className="text-sm font-bold text-slate-700">{v.label}</span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Primary Variable (X)</label>
+                    <select 
+                      className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
+                      value={variableX}
+                      onChange={(e) => { setVariableX(e.target.value); setAiInsights(null); }}
+                    >
+                      <option value="">-- Select Variable --</option>
+                      {variables.map(v => (
+                        <option key={v.value} value={v.value}>{v.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {analysisType === 'inferential' && (
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2 block">Secondary Variable (Y)</label>
+                      <select 
+                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm text-slate-700"
+                        value={variableY}
+                        onChange={(e) => { setVariableY(e.target.value); setAiInsights(null); }}
+                      >
+                        <option value="">-- Select Variable --</option>
+                        {variables.map(v => (
+                          <option key={v.value} value={v.value}>{v.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -480,7 +658,7 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
           <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8 flex-1 overflow-y-auto custom-scrollbar">
             <h2 className="text-xl font-black text-slate-900 mb-6">Analysis Results</h2>
             
-            {(!variableX || (analysisType === 'inferential' && !variableY)) ? (
+            {((analysisType !== 'multivariable' && !variableX) || (analysisType === 'inferential' && !variableY) || (analysisType === 'multivariable' && selectedVariables.length < 2)) ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-12">
                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-6 text-slate-300">
                   <PieChart size={40} />
@@ -490,7 +668,7 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
               </div>
             ) : (
               <>
-                {analysisType === 'descriptive' ? renderDescriptiveResults() : renderInferentialResults()}
+                {analysisType === 'descriptive' ? renderDescriptiveResults() : analysisType === 'inferential' ? renderInferentialResults() : renderMultivariableResults()}
 
                 <div className="mt-8 pt-8 border-t border-slate-100">
                   <div className="flex items-center justify-between mb-6">

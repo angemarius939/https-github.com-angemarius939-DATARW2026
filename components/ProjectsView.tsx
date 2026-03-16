@@ -83,6 +83,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [filterStatus, setFilterStatus] = useState<'All' | 'On Track' | 'Delayed' | 'At Risk'>('All');
   const [filterLocation, setFilterLocation] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'Name' | 'Status' | 'Manager' | 'Progress'>('Name');
 
   // Settings Form State
   const [settingsForm, setSettingsForm] = useState<Partial<Project>>({});
@@ -92,9 +93,11 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   // New Project State with Budget Breakdown
   const [newProjectData, setNewProjectData] = useState<Partial<Project> & { breakdown: Record<string, number>, customFields?: Record<string, any> }>({
     name: '',
+    description: '',
     location: '',
     budget: 0,
     startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
     manager: '',
     breakdown: {
       'Personnel': 0,
@@ -134,9 +137,37 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   }, [triggerCreate]);
 
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectIdFromUrl = urlParams.get('projectId');
+    const viewFromUrl = urlParams.get('view');
+    if (projectIdFromUrl) {
+      const project = projects.find(p => p.id === projectIdFromUrl);
+      if (project) {
+        if (viewFromUrl === 'detail') {
+          openProjectDetail(project);
+        } else {
+          openWorkspace(project);
+        }
+      }
+    }
+  }, []); // Run once on mount to check URL
+
+  useEffect(() => {
     if (deepLinkProjectId) {
       const project = projects.find(p => p.id === deepLinkProjectId);
       if (project) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const currentView = urlParams.get('view');
+        const currentProjectId = urlParams.get('projectId');
+        
+        // If the URL already matches the deep link project and has a specific view, 
+        // it means this was triggered internally by openProjectDetail or openWorkspace.
+        // We do nothing here to avoid overriding the view mode.
+        if (currentProjectId === deepLinkProjectId && (currentView === 'detail' || currentView === 'workspace')) {
+          return;
+        }
+        
+        // Triggered externally (e.g., from App.tsx dropdown), default to workspace
         openWorkspace(project);
       }
     }
@@ -149,20 +180,49 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   const openWorkspace = (project: Project) => {
     setActiveProject(project);
     onProjectSelect?.(project.id);
+    
+    // Update URL for deep linking
+    const url = new URL(window.location.href);
+    url.searchParams.set('projectId', project.id);
+    url.searchParams.set('view', 'workspace');
+    window.history.pushState({}, '', url.toString());
+
     setSettingsForm({
       name: project.name,
+      description: project.description,
       location: project.location,
       manager: project.manager,
       status: project.status,
       startDate: project.startDate,
+      endDate: project.endDate,
       budget: project.budget
     });
     setViewMode('WORKSPACE');
     setActiveTab('overview');
   };
 
+  const closeWorkspace = () => {
+    setViewMode('LIST');
+    onProjectSelect?.(null);
+    setActiveProject(null);
+    
+    // Remove projectId from URL
+    const url = new URL(window.location.href);
+    url.searchParams.delete('projectId');
+    url.searchParams.delete('view');
+    window.history.pushState({}, '', url.toString());
+  };
+
   const openProjectDetail = (project: Project) => {
     setActiveProject(project);
+    onProjectSelect?.(project.id);
+    
+    // Update URL for deep linking
+    const url = new URL(window.location.href);
+    url.searchParams.set('projectId', project.id);
+    url.searchParams.set('view', 'detail');
+    window.history.pushState({}, '', url.toString());
+
     setViewMode('DETAIL');
   };
 
@@ -188,6 +248,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
       const newProject: Project = {
         id: Date.now().toString(),
         name: newProjectData.name || '',
+        description: newProjectData.description || '',
         location: newProjectData.location || '',
         budget: newProjectData.budget || 0,
         spent: 0,
@@ -195,6 +256,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         status: 'On Track',
         beneficiaries: 0,
         startDate: newProjectData.startDate || new Date().toISOString().split('T')[0],
+        endDate: newProjectData.endDate || '',
         manager: newProjectData.manager || '',
         budgetLines: budgetLines,
         indicators: [],
@@ -219,12 +281,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
       setIsCreateModalOpen(false);
       setIsSaving(false);
       
-      setActiveProject(newProject);
-      onProjectSelect?.(newProject.id);
-      setViewMode('WORKSPACE');
+      openWorkspace(newProject);
       setIsPostCreatePromptOpen(true);
       setNewProjectData({ 
-        name: '', location: '', budget: 0, startDate: new Date().toISOString().split('T')[0], manager: '',
+        name: '', description: '', location: '', budget: 0, startDate: new Date().toISOString().split('T')[0], endDate: '', manager: '',
         breakdown: { 'Personnel': 0, 'Operational': 0, 'Equipment': 0, 'Travel': 0, 'Sub-grants': 0, 'Other': 0 }
       });
       onNotify("Project initialized successfully.", "success");
@@ -414,8 +474,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
       const updated = projects.filter(p => p.id !== activeProject.id);
       setProjects(updated);
       setGlobalProjects(updated);
-      onProjectSelect?.(null);
-      setViewMode('LIST');
+      closeWorkspace();
       onNotify("Project purged from organization registry", "error");
     }
   };
@@ -446,7 +505,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   }, [projects]);
 
   const filteredProjects = useMemo(() => {
-    return projects.filter(project => {
+    let result = projects.filter(project => {
         const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                               project.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
                               project.manager.toLowerCase().includes(searchQuery.toLowerCase());
@@ -454,15 +513,36 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         const matchesLocation = filterLocation === 'All' || project.location === filterLocation;
         return matchesSearch && matchesStatus && matchesLocation;
     });
-  }, [projects, searchQuery, filterStatus, filterLocation]);
+
+    result.sort((a, b) => {
+      if (sortBy === 'Name') {
+        return a.name.localeCompare(b.name);
+      } else if (sortBy === 'Status') {
+        return a.status.localeCompare(b.status);
+      } else if (sortBy === 'Manager') {
+        return a.manager.localeCompare(b.manager);
+      } else if (sortBy === 'Progress') {
+        return b.progress - a.progress;
+      }
+      return 0;
+    });
+
+    return result;
+  }, [projects, searchQuery, filterStatus, filterLocation, sortBy]);
 
   if (viewMode === 'DETAIL' && activeProject) {
     return (
       <ProjectDetailView 
         project={activeProject} 
-        onBack={() => { setViewMode('LIST'); setActiveProject(null); }}
+        onBack={closeWorkspace}
         onOpenWorkspace={openWorkspace}
         onNavigateToAnalysis={onNavigateToAnalysis}
+        onUpdateProject={(updatedProject) => {
+          const updatedProjects = projects.map(p => p.id === updatedProject.id ? updatedProject : p);
+          setProjects(updatedProjects);
+          setGlobalProjects(updatedProjects);
+          setActiveProject(updatedProject);
+        }}
       />
     );
   }
@@ -473,7 +553,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
             {/* Workspace Header */}
             <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0 z-10">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => { setViewMode('LIST'); onProjectSelect?.(null); }} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
+                    <button onClick={closeWorkspace} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                         <ArrowLeft size={20} />
                     </button>
                     <div>
@@ -1028,7 +1108,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                            </div>
 
                            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-10 space-y-8">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                  <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Project Name</label>
                                     <input 
@@ -1045,6 +1125,15 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                        onChange={(e) => setSettingsForm({...settingsForm, manager: e.target.value})}
                                     />
                                  </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
+                                 <textarea 
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold resize-none h-24"
+                                    value={settingsForm.description || ''}
+                                    onChange={(e) => setSettingsForm({...settingsForm, description: e.target.value})}
+                                 />
                               </div>
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
@@ -1077,6 +1166,18 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                        onChange={(e) => setSettingsForm({...settingsForm, startDate: e.target.value})}
                                     />
                                  </div>
+                                 <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End Date</label>
+                                    <input 
+                                       type="date"
+                                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                       value={settingsForm.endDate || ''}
+                                       onChange={(e) => setSettingsForm({...settingsForm, endDate: e.target.value})}
+                                    />
+                                 </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                  <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Project Status</label>
                                     <select 
@@ -1324,6 +1425,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                 <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="e.g. WASH Resilience Phase II" value={newProjectData.name} onChange={(e) => setNewProjectData({...newProjectData, name: e.target.value})} />
                             </div>
                             <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
+                                <textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300 resize-none h-24" placeholder="Brief project description..." value={newProjectData.description || ''} onChange={(e) => setNewProjectData({...newProjectData, description: e.target.value})}></textarea>
+                            </div>
+                            <div className="space-y-1.5">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Project Manager</label>
                                 <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Assigned PM Name" value={newProjectData.manager} onChange={(e) => setNewProjectData({...newProjectData, manager: e.target.value})} />
                             </div>
@@ -1331,9 +1436,15 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Operational Area</label>
                                 <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Location" value={newProjectData.location} onChange={(e) => setNewProjectData({...newProjectData, location: e.target.value})} />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Launch Date</label>
-                                <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.startDate} onChange={(e) => setNewProjectData({...newProjectData, startDate: e.target.value})} />
+                            <div className="grid grid-cols-2 gap-4">
+                               <div className="space-y-1.5">
+                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Launch Date</label>
+                                   <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.startDate} onChange={(e) => setNewProjectData({...newProjectData, startDate: e.target.value})} />
+                               </div>
+                               <div className="space-y-1.5">
+                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End Date</label>
+                                   <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.endDate || ''} onChange={(e) => setNewProjectData({...newProjectData, endDate: e.target.value})} />
+                               </div>
                             </div>
                           </div>
 
@@ -1589,12 +1700,26 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
               ))}
            </select>
         </div>
-        {(searchQuery || filterStatus !== 'All' || filterLocation !== 'All') && (
+        <div className="flex items-center gap-2 px-6 py-2 bg-slate-50 border-none rounded-2xl">
+           <BarChart3 size={18} className="text-slate-400" />
+           <select 
+             className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer pr-4"
+             value={sortBy}
+             onChange={(e) => setSortBy(e.target.value as any)}
+           >
+              <option value="Name">Sort by Name</option>
+              <option value="Status">Sort by Status</option>
+              <option value="Manager">Sort by Manager</option>
+              <option value="Progress">Sort by Progress</option>
+           </select>
+        </div>
+        {(searchQuery || filterStatus !== 'All' || filterLocation !== 'All' || sortBy !== 'Name') && (
           <button 
             onClick={() => {
               setSearchQuery('');
               setFilterStatus('All');
               setFilterLocation('All');
+              setSortBy('Name');
             }}
             className="flex items-center gap-2 px-6 py-2 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all"
           >
@@ -1607,7 +1732,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         {filteredProjects.map(project => (
           <div key={project.id} onClick={() => openProjectDetail(project)} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group cursor-pointer relative overflow-hidden flex flex-col h-full">
             <div className="p-8 flex-1">
-              <div className="flex justify-between items-start mb-8">
+              <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-4 bg-indigo-50 rounded-2xl text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner"><FolderKanban size={28} /></div>
                   <div>
@@ -1616,6 +1741,11 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
                 </div>
               </div>
+              {project.description && (
+                <p className="text-sm text-slate-500 font-medium mb-6 line-clamp-2 leading-relaxed">
+                  {project.description}
+                </p>
+              )}
               <div className="space-y-6">
                  <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
                    <span>Global Completion</span>

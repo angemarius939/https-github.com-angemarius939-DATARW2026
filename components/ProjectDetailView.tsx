@@ -1,22 +1,245 @@
 import React, { useState } from 'react';
-import { Project, ProjectActivity } from '../types';
+import { Project, ProjectActivity, ProjectPartner, ProjectRisk } from '../types';
 import { 
   ArrowLeft, FolderKanban, Calendar, Users, DollarSign, 
   MapPin, CheckCircle, Target, Activity, Clock, User,
   List, LayoutGrid, AlertTriangle, CheckSquare, X,
-  PieChart as PieChartIcon, LineChart
+  PieChart as PieChartIcon, LineChart, Plus, Edit2, Trash2,
+  FileText, Upload, Sparkles, Loader2
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { GoogleGenAI } from "@google/genai";
 
 interface ProjectDetailViewProps {
   project: Project;
   onBack: () => void;
   onOpenWorkspace: (project: Project) => void;
   onNavigateToAnalysis?: (projectId: string) => void;
+  onUpdateProject?: (project: Project) => void;
 }
 
-const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, onOpenWorkspace, onNavigateToAnalysis }) => {
+const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, onOpenWorkspace, onNavigateToAnalysis, onUpdateProject }) => {
   const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD'>('LIST');
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
+  const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
+  const [partnerForm, setPartnerForm] = useState<Partial<ProjectPartner>>({
+    name: '',
+    role: 'Implementing Partner',
+    contributionAmount: 0,
+    contactPerson: '',
+    email: ''
+  });
+
+  const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+  const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
+  const [riskForm, setRiskForm] = useState<Partial<ProjectRisk>>({
+    description: '',
+    category: 'Operational',
+    probability: 'Medium',
+    impact: 'Medium',
+    mitigationStrategy: '',
+    status: 'Active',
+    owner: ''
+  });
+
+  const [isEditingNarrative, setIsEditingNarrative] = useState(false);
+  const [narrativeText, setNarrativeText] = useState(project.narrative || '');
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
+  const [documentForm, setDocumentForm] = useState({
+    name: '',
+    category: 'Report',
+    content: ''
+  });
+
+  const handleSaveNarrative = () => {
+    if (!onUpdateProject) return;
+    onUpdateProject({
+      ...project,
+      narrative: narrativeText
+    });
+    setIsEditingNarrative(false);
+  };
+
+  const handleGenerateInsight = async () => {
+    setIsAiLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      const docsContext = (project.documents || [])
+        .map(d => `Document: ${d.name} (${d.category})\nContent: ${d.content || 'No content provided'}`)
+        .join('\n\n');
+        
+      const prompt = `Analyze the following project details, narrative, and documents to provide a strategic insight or summary.
+      
+Project Name: ${project.name}
+Status: ${project.status}
+Progress: ${project.progress}%
+Narrative: ${project.narrative || 'No narrative provided.'}
+
+Documents:
+${docsContext}
+
+Provide a concise, 2-3 sentence strategic insight based on this information.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt
+      });
+      
+      setAiInsight(response.text || "Analysis complete. No specific insights generated.");
+    } catch (e) {
+      console.error("AI Insight Error:", e);
+      setAiInsight("Failed to generate insight. Please check your API key and try again.");
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
+  const handleSaveDocument = () => {
+    if (!onUpdateProject || !documentForm.name) return;
+    
+    const newDoc = {
+      id: `doc-${Date.now()}`,
+      name: documentForm.name,
+      type: 'TXT',
+      category: documentForm.category,
+      size: `${(documentForm.content.length / 1024).toFixed(1)} KB`,
+      owner: 'Current User',
+      date: new Date().toISOString().split('T')[0],
+      content: documentForm.content
+    };
+    
+    onUpdateProject({
+      ...project,
+      documents: [...(project.documents || []), newDoc]
+    });
+    
+    setIsDocumentModalOpen(false);
+    setDocumentForm({ name: '', category: 'Report', content: '' });
+  };
+
+  const handleDeleteDocument = (id: string) => {
+    if (!onUpdateProject) return;
+    if (confirm("Are you sure you want to remove this document?")) {
+      onUpdateProject({
+        ...project,
+        documents: (project.documents || []).filter(d => d.id !== id)
+      });
+    }
+  };
+
+  const handleOpenRiskModal = (risk?: ProjectRisk) => {
+    if (risk) {
+      setEditingRiskId(risk.id);
+      setRiskForm(risk);
+    } else {
+      setEditingRiskId(null);
+      setRiskForm({
+        description: '',
+        category: 'Operational',
+        probability: 'Medium',
+        impact: 'Medium',
+        mitigationStrategy: '',
+        status: 'Active',
+        owner: ''
+      });
+    }
+    setIsRiskModalOpen(true);
+  };
+
+  const handleSaveRisk = () => {
+    if (!onUpdateProject || !riskForm.description || !riskForm.owner) return;
+
+    const newRisk: ProjectRisk = {
+      id: editingRiskId || `risk-${Date.now()}`,
+      description: riskForm.description,
+      category: riskForm.category as any,
+      probability: riskForm.probability as any,
+      impact: riskForm.impact as any,
+      mitigationStrategy: riskForm.mitigationStrategy || '',
+      status: riskForm.status as any,
+      owner: riskForm.owner
+    };
+
+    let updatedRisks;
+    if (editingRiskId) {
+      updatedRisks = (project.risks || []).map(r => r.id === editingRiskId ? newRisk : r);
+    } else {
+      updatedRisks = [...(project.risks || []), newRisk];
+    }
+
+    onUpdateProject({
+      ...project,
+      risks: updatedRisks
+    });
+    setIsRiskModalOpen(false);
+  };
+
+  const handleDeleteRisk = (id: string) => {
+    if (!onUpdateProject) return;
+    if (confirm("Are you sure you want to remove this risk?")) {
+      onUpdateProject({
+        ...project,
+        risks: (project.risks || []).filter(r => r.id !== id)
+      });
+    }
+  };
+
+  const handleOpenPartnerModal = (partner?: ProjectPartner) => {
+    if (partner) {
+      setEditingPartnerId(partner.id);
+      setPartnerForm(partner);
+    } else {
+      setEditingPartnerId(null);
+      setPartnerForm({
+        name: '',
+        role: 'Implementing Partner',
+        contributionAmount: 0,
+        contactPerson: '',
+        email: ''
+      });
+    }
+    setIsPartnerModalOpen(true);
+  };
+
+  const handleSavePartner = () => {
+    if (!onUpdateProject || !partnerForm.name || !partnerForm.role || !partnerForm.contactPerson || !partnerForm.email) return;
+
+    const newPartner: ProjectPartner = {
+      id: editingPartnerId || `partner-${Date.now()}`,
+      name: partnerForm.name,
+      role: partnerForm.role as any,
+      contributionAmount: partnerForm.contributionAmount,
+      contactPerson: partnerForm.contactPerson,
+      email: partnerForm.email
+    };
+
+    let updatedPartners;
+    if (editingPartnerId) {
+      updatedPartners = (project.partners || []).map(p => p.id === editingPartnerId ? newPartner : p);
+    } else {
+      updatedPartners = [...(project.partners || []), newPartner];
+    }
+
+    onUpdateProject({
+      ...project,
+      partners: updatedPartners
+    });
+    setIsPartnerModalOpen(false);
+  };
+
+  const handleDeletePartner = (id: string) => {
+    if (!onUpdateProject) return;
+    if (confirm("Are you sure you want to remove this partner?")) {
+      onUpdateProject({
+        ...project,
+        partners: (project.partners || []).filter(p => p.id !== id)
+      });
+    }
+  };
 
   const getActivityStatusColor = (status: string) => {
     switch (status) {
@@ -99,7 +322,7 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 mb-4 leading-tight">{project.name}</h3>
                 <p className="text-slate-500 font-medium mb-8">
-                  Comprehensive overview of project metrics, financials, and operational status.
+                  {project.description || "Comprehensive overview of project metrics, financials, and operational status."}
                 </p>
                 
                 <div className="flex items-center gap-6">
@@ -120,6 +343,18 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
                       {project.startDate}
                     </p>
                   </div>
+                  {project.endDate && (
+                    <>
+                      <div className="h-10 w-px bg-slate-200"></div>
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">End Date</p>
+                        <p className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <Calendar size={14} className="text-indigo-400" />
+                          {project.endDate}
+                        </p>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
               
@@ -328,6 +563,130 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
             </div>
           </div>
 
+          {/* Narrative & AI Insights Section */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <FileText className="text-indigo-600" size={20} /> Project Narrative
+              </h4>
+              <div className="flex gap-2">
+                {!isEditingNarrative ? (
+                  <button 
+                    onClick={() => setIsEditingNarrative(true)}
+                    className="p-2 bg-slate-50 text-slate-500 hover:text-indigo-600 rounded-xl transition-colors border border-slate-200"
+                    title="Edit Narrative"
+                  >
+                    <Edit2 size={16} />
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => setIsEditingNarrative(false)}
+                      className="px-4 py-2 bg-slate-100 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSaveNarrative}
+                      className="px-4 py-2 bg-indigo-600 text-white font-bold text-xs rounded-xl hover:bg-indigo-700 transition-colors"
+                    >
+                      Save
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            <div className="mb-8">
+              {isEditingNarrative ? (
+                <textarea
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 min-h-[150px] font-medium text-slate-700"
+                  placeholder="Enter project narrative, summary, or key notes..."
+                  value={narrativeText}
+                  onChange={(e) => setNarrativeText(e.target.value)}
+                />
+              ) : (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 min-h-[100px]">
+                  {project.narrative ? (
+                    <p className="text-slate-700 whitespace-pre-wrap">{project.narrative}</p>
+                  ) : (
+                    <p className="text-slate-400 italic">No narrative recorded for this project yet.</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* AI Insights Sub-section */}
+            <div className="bg-gradient-to-r from-indigo-50 to-violet-50 rounded-2xl p-6 border border-indigo-100">
+              <div className="flex justify-between items-center mb-4">
+                <h5 className="font-black text-indigo-900 flex items-center gap-2">
+                  <Sparkles className="text-amber-500" size={18} /> AI Strategic Insight
+                </h5>
+                <button 
+                  onClick={handleGenerateInsight}
+                  disabled={isAiLoading}
+                  className="px-4 py-2 bg-white text-indigo-600 font-bold text-xs rounded-xl hover:bg-indigo-50 transition-colors border border-indigo-200 shadow-sm disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isAiLoading ? <><Loader2 size={14} className="animate-spin" /> Analyzing...</> : 'Generate Insight'}
+                </button>
+              </div>
+              
+              <div className="bg-white/60 p-4 rounded-xl border border-white/40">
+                {aiInsight ? (
+                  <p className="text-slate-700 font-medium leading-relaxed">{aiInsight}</p>
+                ) : (
+                  <p className="text-slate-500 italic text-sm">Click 'Generate Insight' to analyze the project's narrative and documents.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Documents Section */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Upload className="text-indigo-600" size={20} /> Project Documents
+              </h4>
+              <button 
+                onClick={() => setIsDocumentModalOpen(true)}
+                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-100 transition-all"
+              >
+                <Plus size={14} /> Add Document
+              </button>
+            </div>
+            
+            {project.documents && project.documents.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {project.documents.map(doc => (
+                  <div key={doc.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-start gap-4 group">
+                    <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+                      <FileText size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-900 text-sm truncate">{doc.name}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-slate-500">
+                        <span className="font-medium bg-slate-200 px-1.5 py-0.5 rounded">{doc.category}</span>
+                        <span>{doc.size}</span>
+                        <span>{doc.date}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => handleDeleteDocument(doc.id)}
+                      className="p-2 text-slate-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <FileText size={32} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-500 font-medium text-sm">No documents uploaded yet.</p>
+              </div>
+            )}
+          </div>
+
           {/* Project Activities Section */}
           <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
@@ -514,70 +873,386 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
           )}
 
           {/* Risks Section */}
-          {project.risks && project.risks.length > 0 && (
-            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
-              <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
                 <AlertTriangle className="text-indigo-600" size={20} /> Risk Register
               </h4>
-              <div className="space-y-4">
-                {project.risks.map(risk => (
-                  <div key={risk.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col md:flex-row gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                          risk.impact === 'High' ? 'bg-red-100 text-red-700' :
-                          risk.impact === 'Medium' ? 'bg-amber-100 text-amber-700' :
-                          'bg-emerald-100 text-emerald-700'
-                        }`}>
-                          {risk.impact} Impact
-                        </span>
-                        <span className="text-xs font-bold text-slate-500">{risk.category}</span>
-                      </div>
-                      <p className="font-bold text-slate-900 text-sm mb-2">{risk.description}</p>
-                      <p className="text-xs text-slate-600"><span className="font-semibold">Mitigation:</span> {risk.mitigationStrategy}</p>
-                    </div>
-                    <div className="flex flex-row md:flex-col justify-between items-end md:items-end gap-2 md:w-32 shrink-0 border-t md:border-t-0 md:border-l border-slate-200 pt-4 md:pt-0 md:pl-6">
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
-                        <p className={`text-sm font-bold ${risk.status === 'Open' ? 'text-amber-600' : 'text-emerald-600'}`}>{risk.status}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner</p>
-                        <p className="text-sm font-bold text-slate-900">{risk.owner}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <button 
+                onClick={() => handleOpenRiskModal()}
+                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-100 transition-all"
+              >
+                <Plus size={14} /> Add Risk
+              </button>
             </div>
-          )}
+            {project.risks && project.risks.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {project.risks.map(risk => {
+                  const isHighImpact = risk.impact === 'High';
+                  const isHighProb = risk.probability === 'High';
+                  const isCritical = isHighImpact && isHighProb;
+                  
+                  return (
+                    <div key={risk.id} className={`p-5 rounded-2xl border flex flex-col relative group transition-all ${
+                      isCritical ? 'bg-red-50/50 border-red-100 hover:border-red-200 hover:shadow-md' : 
+                      isHighImpact ? 'bg-orange-50/50 border-orange-100 hover:border-orange-200 hover:shadow-md' :
+                      'bg-slate-50 border-slate-100 hover:border-slate-200 hover:shadow-sm'
+                    }`}>
+                      <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2 z-10">
+                        <button onClick={() => handleOpenRiskModal(risk)} className="p-1.5 bg-white text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
+                          <Edit2 size={14} />
+                        </button>
+                        <button onClick={() => handleDeleteRisk(risk.id)} className="p-1.5 bg-white text-slate-400 hover:text-red-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="flex gap-1.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            risk.impact === 'High' ? 'bg-red-100 text-red-700' :
+                            risk.impact === 'Medium' ? 'bg-amber-100 text-amber-700' :
+                            'bg-emerald-100 text-emerald-700'
+                          }`} title="Impact">
+                            {risk.impact} Impact
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
+                            risk.probability === 'High' ? 'bg-orange-100 text-orange-700' :
+                            risk.probability === 'Medium' ? 'bg-blue-100 text-blue-700' :
+                            'bg-slate-200 text-slate-700'
+                          }`} title="Probability">
+                            {risk.probability} Prob
+                          </span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-500 ml-auto pr-16">{risk.category}</span>
+                      </div>
+                      
+                      <p className={`font-bold text-sm mb-3 flex-1 ${isCritical ? 'text-red-900' : 'text-slate-900'}`}>
+                        {isCritical && <AlertTriangle size={14} className="inline mr-1.5 text-red-500 mb-0.5" />}
+                        {risk.description}
+                      </p>
+                      
+                      <div className="bg-white/60 p-3 rounded-xl border border-white/40 mb-4 text-xs">
+                        <span className="font-bold text-slate-700 block mb-1">Mitigation:</span> 
+                        <span className="text-slate-600">{risk.mitigationStrategy || 'No mitigation strategy defined.'}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-slate-200/50 mt-auto">
+                        <div>
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Owner</p>
+                          <p className="text-xs font-bold text-slate-900">{risk.owner}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status</p>
+                          <p className={`text-xs font-bold ${
+                            risk.status === 'Open' || risk.status === 'Active' ? 'text-amber-600' : 
+                            risk.status === 'Realized' ? 'text-red-600' : 
+                            'text-emerald-600'
+                          }`}>{risk.status}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <AlertTriangle size={32} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-500 font-medium text-sm">No risks recorded yet.</p>
+              </div>
+            )}
+          </div>
 
           {/* Partners Section */}
-          {project.partners && project.partners.length > 0 && (
-            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
-              <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
                 <Users className="text-indigo-600" size={20} /> Project Partners
               </h4>
+              <button 
+                onClick={() => handleOpenPartnerModal()}
+                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-100 transition-all"
+              >
+                <Plus size={14} /> Add Partner
+              </button>
+            </div>
+            {project.partners && project.partners.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {project.partners.map(partner => (
-                  <div key={partner.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                    <h5 className="font-bold text-slate-900 mb-1">{partner.name}</h5>
+                  <div key={partner.id} className="bg-slate-50 p-5 rounded-2xl border border-slate-100 relative group">
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                      <button onClick={() => handleOpenPartnerModal(partner)} className="p-1.5 bg-white text-slate-400 hover:text-indigo-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDeletePartner(partner.id)} className="p-1.5 bg-white text-slate-400 hover:text-red-600 rounded-lg shadow-sm border border-slate-200 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                    <h5 className="font-bold text-slate-900 mb-1 pr-16">{partner.name}</h5>
                     <p className="text-xs text-indigo-600 font-semibold mb-4">{partner.role}</p>
                     <div className="space-y-2 text-sm text-slate-600">
                       <p><span className="text-slate-400">Contact:</span> {partner.contactPerson}</p>
                       <p><span className="text-slate-400">Email:</span> {partner.email}</p>
-                      {partner.contributionAmount && (
+                      {partner.contributionAmount !== undefined && (
                         <p><span className="text-slate-400">Contribution:</span> RWF {(partner.contributionAmount / 1000000).toFixed(1)}M</p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-center py-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                <Users size={32} className="mx-auto text-slate-300 mb-3" />
+                <p className="text-slate-500 font-medium text-sm">No partners added yet.</p>
+              </div>
+            )}
+          </div>
 
         </div>
       </div>
+
+      {/* Partner Modal */}
+      {isPartnerModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
+            <div className="p-8 bg-indigo-600 text-white flex justify-between items-center">
+              <h3 className="text-2xl font-black tracking-tight">{editingPartnerId ? 'Edit Partner' : 'Add Partner'}</h3>
+              <button onClick={() => setIsPartnerModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+            </div>
+            <div className="p-8 space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Partner Name</label>
+                <input 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  placeholder="e.g. UNICEF" 
+                  value={partnerForm.name} 
+                  onChange={e => setPartnerForm({...partnerForm, name: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Role</label>
+                <select 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  value={partnerForm.role} 
+                  onChange={e => setPartnerForm({...partnerForm, role: e.target.value as any})}
+                >
+                  <option value="Funder">Funder</option>
+                  <option value="Implementing Partner">Implementing Partner</option>
+                  <option value="Government">Government</option>
+                  <option value="Community Based Organization">Community Based Organization</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contribution Amount (RWF)</label>
+                <input 
+                  type="number"
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  placeholder="0" 
+                  value={partnerForm.contributionAmount || ''} 
+                  onChange={e => setPartnerForm({...partnerForm, contributionAmount: Number(e.target.value)})} 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Person</label>
+                  <input 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    placeholder="John Doe" 
+                    value={partnerForm.contactPerson} 
+                    onChange={e => setPartnerForm({...partnerForm, contactPerson: e.target.value})} 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email</label>
+                  <input 
+                    type="email"
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    placeholder="john@example.com" 
+                    value={partnerForm.email} 
+                    onChange={e => setPartnerForm({...partnerForm, email: e.target.value})} 
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
+              <button 
+                onClick={handleSavePartner} 
+                disabled={!partnerForm.name || !partnerForm.role || !partnerForm.contactPerson || !partnerForm.email}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                {editingPartnerId ? 'Save Changes' : 'Add Partner'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Risk Modal */}
+      {isRiskModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
+            <div className="p-8 bg-indigo-600 text-white flex justify-between items-center shrink-0">
+              <h3 className="text-2xl font-black tracking-tight">{editingRiskId ? 'Edit Risk' : 'Add Risk'}</h3>
+              <button onClick={() => setIsRiskModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+            </div>
+            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
+                <textarea 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold resize-none h-24" 
+                  placeholder="Describe the risk..." 
+                  value={riskForm.description} 
+                  onChange={e => setRiskForm({...riskForm, description: e.target.value})} 
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={riskForm.category} 
+                    onChange={e => setRiskForm({...riskForm, category: e.target.value as any})}
+                  >
+                    <option value="Financial">Financial</option>
+                    <option value="Operational">Operational</option>
+                    <option value="Strategic">Strategic</option>
+                    <option value="Compliance">Compliance</option>
+                    <option value="Reputational">Reputational</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={riskForm.status} 
+                    onChange={e => setRiskForm({...riskForm, status: e.target.value as any})}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Open">Open</option>
+                    <option value="Mitigated">Mitigated</option>
+                    <option value="Realized">Realized</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Probability</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={riskForm.probability} 
+                    onChange={e => setRiskForm({...riskForm, probability: e.target.value as any})}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Impact</label>
+                  <select 
+                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                    value={riskForm.impact} 
+                    onChange={e => setRiskForm({...riskForm, impact: e.target.value as any})}
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mitigation Strategy</label>
+                <textarea 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold resize-none h-24" 
+                  placeholder="How will this risk be mitigated?" 
+                  value={riskForm.mitigationStrategy} 
+                  onChange={e => setRiskForm({...riskForm, mitigationStrategy: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Owner</label>
+                <input 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  placeholder="Risk Owner" 
+                  value={riskForm.owner} 
+                  onChange={e => setRiskForm({...riskForm, owner: e.target.value})} 
+                />
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveRisk} 
+                disabled={!riskForm.description || !riskForm.owner}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                {editingRiskId ? 'Save Changes' : 'Add Risk'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Modal */}
+      {isDocumentModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <h3 className="text-xl font-black text-slate-900">Add Project Document</h3>
+              <button 
+                onClick={() => setIsDocumentModalOpen(false)} 
+                className="w-10 h-10 bg-white border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 rounded-full flex items-center justify-center transition-all shadow-sm"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Document Name</label>
+                <input 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  placeholder="e.g., Q3 Progress Report" 
+                  value={documentForm.name} 
+                  onChange={e => setDocumentForm({...documentForm, name: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                <select 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" 
+                  value={documentForm.category} 
+                  onChange={e => setDocumentForm({...documentForm, category: e.target.value})}
+                >
+                  <option value="Report">Report</option>
+                  <option value="Proposal">Proposal</option>
+                  <option value="Agreement">Agreement</option>
+                  <option value="Field Data">Field Data</option>
+                  <option value="Media">Media</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Document Content (Text)</label>
+                <textarea 
+                  className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-medium resize-none h-48" 
+                  placeholder="Paste the document content here for AI analysis..." 
+                  value={documentForm.content} 
+                  onChange={e => setDocumentForm({...documentForm, content: e.target.value})} 
+                />
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveDocument} 
+                disabled={!documentForm.name}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Save Document
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

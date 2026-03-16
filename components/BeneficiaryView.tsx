@@ -6,8 +6,9 @@ import {
   MapPin, GraduationCap, Home, Calendar, 
   Download, UserCheck, UserPlus, X, Check, Loader2, 
   Sliders, Settings, User, Hash, Info, ChevronRight,
-  FilterX
+  FilterX, Printer
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface BeneficiaryViewProps {
   initialBeneficiaries: Beneficiary[];
@@ -29,6 +30,9 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
   const [filterStatus, setFilterStatus] = useState('All');
   const [isRegisterModalOpen, setIsRegisterModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedBeneficiaries, setSelectedBeneficiaries] = useState<string[]>([]);
+  const [printingBeneficiary, setPrintingBeneficiary] = useState<Beneficiary | null>(null);
+  const [printingProfile, setPrintingProfile] = useState<Beneficiary | null>(null);
   
   const [tempConfig, setTempConfig] = useState<ViewConfig>(config);
 
@@ -43,7 +47,10 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
     age: 0,
     educationLevel: 'None',
     householdSize: 1,
-    status: 'Active'
+    status: 'Active',
+    idNumber: '',
+    phoneNumber: '',
+    enrollmentDate: new Date().toISOString().split('T')[0]
   });
 
   const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(initialBeneficiaries);
@@ -64,9 +71,55 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
   const beneficiaryTableDef = virtualTables.find(t => t.id === 'beneficiaries');
   const customFields = beneficiaryTableDef?.fields || [];
 
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedBeneficiaries(filteredBeneficiaries.map(b => b.id));
+    } else {
+      setSelectedBeneficiaries([]);
+    }
+  };
+
+  const handleSelectBeneficiary = (id: string) => {
+    setSelectedBeneficiaries(prev => 
+      prev.includes(id) ? prev.filter(bId => bId !== id) : [...prev, id]
+    );
+  };
+
+  const handleBulkMarkInactive = () => {
+    if (selectedBeneficiaries.length === 0) return;
+    
+    const updated = beneficiaries.map(b => 
+      selectedBeneficiaries.includes(b.id) ? { ...b, status: 'Inactive' as const } : b
+    );
+    
+    setBeneficiaries(updated);
+    setGlobalBeneficiaries(updated);
+    setSelectedBeneficiaries([]);
+    onNotify(`Marked ${selectedBeneficiaries.length} beneficiaries as Inactive`, "success");
+  };
+
+  const handleBulkExport = () => {
+    if (selectedBeneficiaries.length === 0) return;
+    
+    const selectedData = beneficiaries.filter(b => selectedBeneficiaries.includes(b.id));
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + "ID,First Name,Last Name,Gender,Age,Location,Status\n"
+      + selectedData.map(b => `${b.id},${b.firstName},${b.lastName},${b.gender},${b.age},${b.location},${b.status}`).join("\n");
+      
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "beneficiaries_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    onNotify(`Exported ${selectedBeneficiaries.length} beneficiaries`, "success");
+  };
+
   const handleRegister = () => {
-    if (!newBen.firstName || !newBen.lastName || !newBen.location || !newBen.age) {
-        onNotify("Please fill in all mandatory demographic fields", "error");
+    if (!newBen.firstName || !newBen.lastName || !newBen.location || !newBen.age || !newBen.idNumber || !newBen.phoneNumber) {
+        onNotify("Please fill in all mandatory demographic fields including ID and Phone", "error");
         return;
     }
     
@@ -82,11 +135,13 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
         age: Number(newBen.age) || 0,
         location: newBen.location || 'Unknown',
         status: 'Active',
-        enrollmentDate: new Date().toISOString().split('T')[0],
+        enrollmentDate: newBen.enrollmentDate || new Date().toISOString().split('T')[0],
         educationLevel: newBen.educationLevel as any || 'None',
         householdSize: Number(newBen.householdSize) || 1,
         programs: activeProject ? [activeProject.name] : ['General Registration'],
         cases: [],
+        phoneNumber: newBen.phoneNumber,
+        idNumber: newBen.idNumber,
         customFields: newBen.customFields || {}
       };
 
@@ -105,7 +160,10 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
         age: 0,
         educationLevel: 'None',
         householdSize: 1,
-        status: 'Active'
+        status: 'Active',
+        idNumber: '',
+        phoneNumber: '',
+        enrollmentDate: new Date().toISOString().split('T')[0]
       });
       
       onNotify(`Demographic profile for ${b.firstName} synced successfully`, "success");
@@ -206,10 +264,39 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
 
       {/* Main Registry Table */}
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden animate-fade-in">
+        {selectedBeneficiaries.length > 0 && (
+          <div className="bg-indigo-50 px-8 py-4 flex items-center justify-between border-b border-indigo-100">
+            <div className="flex items-center gap-3">
+              <span className="text-indigo-600 font-black text-sm">{selectedBeneficiaries.length} selected</span>
+            </div>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleBulkMarkInactive}
+                className="px-4 py-2 bg-white text-slate-600 border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all shadow-sm"
+              >
+                Mark Inactive
+              </button>
+              <button 
+                onClick={handleBulkExport}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-2"
+              >
+                <Download size={14} /> Export Selected
+              </button>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm border-collapse">
             <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
               <tr>
+                <th className="px-8 py-5 w-10">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={selectedBeneficiaries.length === filteredBeneficiaries.length && filteredBeneficiaries.length > 0}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="px-8 py-5">Individual Profile</th>
                 <th className="px-8 py-5">Demographics</th>
                 <th className="px-8 py-5">Primary Residence</th>
@@ -222,7 +309,15 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filteredBeneficiaries.map((b) => (
-                <tr key={b.id} className="hover:bg-slate-50/50 transition-colors group">
+                <tr key={b.id} className={`hover:bg-slate-50/50 transition-colors group ${selectedBeneficiaries.includes(b.id) ? 'bg-indigo-50/30' : ''}`}>
+                  <td className="px-8 py-6">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={selectedBeneficiaries.includes(b.id)}
+                      onChange={() => handleSelectBeneficiary(b.id)}
+                    />
+                  </td>
                   <td className="px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-700 font-black text-sm shadow-inner group-hover:bg-indigo-600 group-hover:text-white transition-all">
@@ -271,6 +366,12 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                   ))}
                   <td className="px-8 py-6 text-right">
                     <div className="flex items-center justify-end gap-2">
+                       <button onClick={() => setPrintingProfile(b)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Print Profile">
+                          <FileText size={20} />
+                       </button>
+                       <button onClick={() => setPrintingBeneficiary(b)} className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="Print ID Card">
+                          <Printer size={20} />
+                       </button>
                        <button className="p-2 text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all" title="View Full Profile">
                           <ChevronRight size={20} />
                        </button>
@@ -337,6 +438,40 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
                              value={newBen.lastName} 
                              onChange={(e) => setNewBen({...newBen, lastName: e.target.value})} 
+                          />
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Identification & Contact */}
+                 <div className="space-y-5">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Identification & Contact</label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Beneficiary ID *</label>
+                          <input 
+                             placeholder="ID Number" 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
+                             value={newBen.idNumber} 
+                             onChange={(e) => setNewBen({...newBen, idNumber: e.target.value})} 
+                          />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Phone Number *</label>
+                          <input 
+                             placeholder="Phone Number" 
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
+                             value={newBen.phoneNumber} 
+                             onChange={(e) => setNewBen({...newBen, phoneNumber: e.target.value})} 
+                          />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Enrollment Date</label>
+                          <input 
+                             type="date"
+                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
+                             value={newBen.enrollmentDate} 
+                             onChange={(e) => setNewBen({...newBen, enrollmentDate: e.target.value})} 
                           />
                        </div>
                     </div>
@@ -500,6 +635,212 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                  <button onClick={() => { onSaveConfig(tempConfig); setIsConfigOpen(false); }} className="flex-1 py-4 text-xs font-black text-white bg-indigo-600 rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 uppercase tracking-widest">Apply View</button>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Print ID Card Modal */}
+      {printingBeneficiary && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[110] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-scale-in">
+            <div className="p-8 bg-indigo-600 text-white flex justify-between items-center">
+              <h3 className="text-2xl font-black tracking-tight">Beneficiary ID Card</h3>
+              <button onClick={() => setPrintingBeneficiary(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+            </div>
+            <div className="p-8 flex flex-col items-center" id="printable-id-card">
+              <div className="w-full border-2 border-indigo-600 rounded-2xl p-6 relative overflow-hidden bg-white">
+                 <div className="absolute top-0 left-0 w-full h-16 bg-indigo-600"></div>
+                 <div className="relative z-10 flex flex-col items-center">
+                    <div className="w-24 h-24 bg-white rounded-full border-4 border-white shadow-md flex items-center justify-center text-indigo-600 font-black text-3xl mb-4">
+                       {printingBeneficiary.firstName.charAt(0)}{printingBeneficiary.lastName.charAt(0)}
+                    </div>
+                    <h4 className="text-xl font-black text-slate-900">{printingBeneficiary.firstName} {printingBeneficiary.lastName}</h4>
+                    <p className="text-sm font-bold text-indigo-600 mb-6">ID: {printingBeneficiary.idNumber || 'N/A'}</p>
+                    
+                    <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 mb-6">
+                      <QRCodeSVG value={JSON.stringify({ id: printingBeneficiary.id, idNumber: printingBeneficiary.idNumber, name: `${printingBeneficiary.firstName} ${printingBeneficiary.lastName}` })} size={120} />
+                    </div>
+                    
+                    <div className="w-full grid grid-cols-2 gap-4 text-left border-t border-slate-100 pt-4">
+                       <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Phone</p>
+                          <p className="text-xs font-bold text-slate-700">{printingBeneficiary.phoneNumber || 'N/A'}</p>
+                       </div>
+                       <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Enrolled</p>
+                          <p className="text-xs font-bold text-slate-700">{printingBeneficiary.enrollmentDate ? new Date(printingBeneficiary.enrollmentDate).toLocaleDateString() : 'N/A'}</p>
+                       </div>
+                       <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Location</p>
+                          <p className="text-xs font-bold text-slate-700">{printingBeneficiary.location}</p>
+                       </div>
+                       <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Program</p>
+                          <p className="text-xs font-bold text-slate-700 truncate">{printingBeneficiary.programs[0] || 'General'}</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
+              <button onClick={() => {
+                const content = document.getElementById('printable-id-card');
+                const printWindow = window.open('', '', 'height=600,width=800');
+                if (printWindow && content) {
+                  printWindow.document.write('<html><head><title>Print ID Card</title>');
+                  printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+                  printWindow.document.write('</head><body class="flex items-center justify-center min-h-screen bg-gray-100">');
+                  printWindow.document.write(content.innerHTML);
+                  printWindow.document.write('</body></html>');
+                  printWindow.document.close();
+                  setTimeout(() => {
+                    printWindow.print();
+                  }, 1000);
+                }
+              }} className="px-8 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl">
+                Print Card
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Print Profile Modal */}
+      {printingProfile && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[110] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden animate-scale-in max-h-[90vh] flex flex-col">
+            <div className="p-8 bg-indigo-600 text-white flex justify-between items-center shrink-0">
+              <h3 className="text-2xl font-black tracking-tight flex items-center gap-3">
+                <FileText size={28} /> Beneficiary Profile
+              </h3>
+              <button onClick={() => setPrintingProfile(null)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+            </div>
+            
+            <div className="p-8 overflow-y-auto flex-1 bg-slate-50" id="printable-profile">
+              <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm">
+                 {/* Header Section */}
+                 <div className="flex items-start gap-6 mb-8 pb-8 border-b border-slate-100">
+                    <div className="w-24 h-24 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-600 font-black text-3xl shrink-0">
+                       {printingProfile.firstName.charAt(0)}{printingProfile.lastName.charAt(0)}
+                    </div>
+                    <div className="flex-1">
+                       <h1 className="text-3xl font-black text-slate-900 mb-2">{printingProfile.firstName} {printingProfile.lastName}</h1>
+                       <div className="flex flex-wrap gap-4 text-sm font-medium text-slate-500">
+                          <span className="flex items-center gap-1.5"><MapPin size={16} className="text-indigo-500"/> {printingProfile.location}</span>
+                          <span className="flex items-center gap-1.5"><Smartphone size={16} className="text-indigo-500"/> {printingProfile.phoneNumber || 'No phone'}</span>
+                          <span className="flex items-center gap-1.5"><Calendar size={16} className="text-indigo-500"/> Enrolled: {printingProfile.enrollmentDate ? new Date(printingProfile.enrollmentDate).toLocaleDateString() : 'N/A'}</span>
+                       </div>
+                    </div>
+                    <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                      <QRCodeSVG value={JSON.stringify({ id: printingProfile.id, idNumber: printingProfile.idNumber })} size={80} />
+                    </div>
+                 </div>
+
+                 {/* Details Grid */}
+                 <div className="grid grid-cols-2 gap-x-12 gap-y-8">
+                    {/* Column 1 */}
+                    <div className="space-y-8">
+                       <div>
+                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Demographics</h3>
+                          <div className="space-y-3">
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">ID Number</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.idNumber || '-'}</span>
+                             </div>
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Gender</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.gender}</span>
+                             </div>
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Age</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.age}</span>
+                             </div>
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Household Size</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.householdSize}</span>
+                             </div>
+                          </div>
+                       </div>
+                       
+                       <div>
+                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Program Status</h3>
+                          <div className="space-y-3">
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Current Status</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.status}</span>
+                             </div>
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Programs Enrolled</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.programs.length}</span>
+                             </div>
+                             <div className="mt-2 flex flex-wrap gap-2">
+                                {printingProfile.programs.map((prog, i) => (
+                                   <span key={i} className="px-2.5 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold">{prog}</span>
+                                ))}
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+
+                    {/* Column 2 */}
+                    <div className="space-y-8">
+                       <div>
+                          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Vulnerability & Needs</h3>
+                          <div className="space-y-3">
+                             <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Vulnerability Score</span>
+                                <span className="text-sm font-bold text-slate-900">{printingProfile.vulnerabilityScore}/100</span>
+                             </div>
+                             <div className="mt-2 flex flex-wrap gap-2">
+                                {printingProfile.needs.length > 0 ? printingProfile.needs.map((need, i) => (
+                                   <span key={i} className="px-2.5 py-1 bg-rose-50 text-rose-700 rounded-lg text-xs font-bold">{need}</span>
+                                )) : <span className="text-sm text-slate-400 italic">No specific needs recorded</span>}
+                             </div>
+                          </div>
+                       </div>
+
+                       {customFields && customFields.length > 0 && (
+                         <div>
+                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-100 pb-2">Additional Information</h3>
+                            <div className="space-y-3">
+                               {customFields.map(field => (
+                                 <div key={field.id} className="flex justify-between">
+                                    <span className="text-sm text-slate-500">{field.label}</span>
+                                    <span className="text-sm font-bold text-slate-900">{printingProfile.customFields?.[field.name] || '-'}</span>
+                                 </div>
+                               ))}
+                            </div>
+                         </div>
+                       )}
+                    </div>
+                 </div>
+                 
+                 {/* Footer */}
+                 <div className="mt-12 pt-6 border-t border-slate-100 text-center">
+                    <p className="text-xs text-slate-400">Generated on {new Date().toLocaleDateString()} at {new Date().toLocaleTimeString()}</p>
+                    <p className="text-[10px] text-slate-300 mt-1 uppercase tracking-widest font-black">Official Beneficiary Record</p>
+                 </div>
+              </div>
+            </div>
+            
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-white shrink-0">
+              <button onClick={() => {
+                const content = document.getElementById('printable-profile');
+                const printWindow = window.open('', '', 'height=800,width=800');
+                if (printWindow && content) {
+                  printWindow.document.write('<html><head><title>Print Beneficiary Profile</title>');
+                  printWindow.document.write('<script src="https://cdn.tailwindcss.com"></script>');
+                  printWindow.document.write('</head><body class="p-8 bg-gray-50 min-h-screen">');
+                  printWindow.document.write(content.innerHTML);
+                  printWindow.document.write('</body></html>');
+                  printWindow.document.close();
+                  setTimeout(() => {
+                    printWindow.print();
+                  }, 1000);
+                }
+              }} className="px-8 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl flex items-center gap-2">
+                <Printer size={16} /> Print Document
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

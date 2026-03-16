@@ -168,7 +168,7 @@ export interface ProjectRisk {
   probability: 'Low' | 'Medium' | 'High';
   impact: 'Low' | 'Medium' | 'High';
   mitigationStrategy: string;
-  status: 'Open' | 'Mitigated' | 'Closed';
+  status: 'Open' | 'Mitigated' | 'Closed' | 'Active' | 'Realized';
   owner: string;
 }
 
@@ -194,9 +194,22 @@ export interface ProjectIntervention {
   description: string;
 }
 
+export interface ProjectDocument {
+  id: string;
+  name: string;
+  type: string;
+  category: string;
+  size: string;
+  owner: string;
+  date: string;
+  content?: string; // Optional text content for AI to read
+}
+
 export interface Project {
   id: string;
   name: string;
+  description?: string;
+  narrative?: string;
   location: string;
   status: 'On Track' | 'At Risk' | 'Delayed';
   progress: number;
@@ -204,6 +217,7 @@ export interface Project {
   spent: number; // Sum of lines
   beneficiaries: number;
   startDate: string;
+  endDate?: string;
   manager: string;
   budgetLines: BudgetLine[];
   indicators: ProjectIndicator[];
@@ -217,6 +231,7 @@ export interface Project {
   partners?: ProjectPartner[];
   interventions?: ProjectIntervention[];
   thematicAreas?: string[];
+  documents?: ProjectDocument[];
 }
 
 // No-Code Platform Types

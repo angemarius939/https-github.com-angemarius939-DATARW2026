@@ -3,45 +3,13 @@ import React, { useState } from 'react';
 /* Import missing Columns icon */
 import { Settings, Layout, Plus, Trash2, Save, Database, Table, Grid, LayoutDashboard, X, FilePlus, Users, Shield, PieChart, BarChart as BarChartIcon, LineChart as LineChartIcon, Check, Columns } from 'lucide-react';
 import { CustomPage, DataSourceType, PageWidget, WidgetType, ChartType } from '../types';
+import { SOURCE_FIELDS } from '../constants';
 
 interface SettingsViewProps {
   customPages: CustomPage[];
   onSavePage: (page: CustomPage) => void;
   onDeletePage: (pageId: string) => void;
 }
-
-const SOURCE_FIELDS: Record<DataSourceType, { key: string; label: string }[]> = {
-  PROJECTS: [
-    { key: 'name', label: 'Project Name' },
-    { key: 'location', label: 'Location' },
-    { key: 'status', label: 'Status' },
-    { key: 'progress', label: 'Progress (%)' },
-    { key: 'budget', label: 'Total Budget' },
-    { key: 'spent', label: 'Actual Spent' },
-    { key: 'manager', label: 'Lead Manager' },
-    { key: 'startDate', label: 'Launch Date' },
-  ],
-  SURVEYS: [
-    { key: 'title', label: 'Survey Title' },
-    { key: 'status', label: 'Current Status' },
-    { key: 'responseCount', label: 'Response Volume' },
-    { key: 'createdAt', label: 'Date Created' },
-  ],
-  BENEFICIARIES: [
-    { key: 'name', label: 'Full Name' },
-    { key: 'location', label: 'Primary Location' },
-    { key: 'age', label: 'Age Group' },
-    { key: 'status', label: 'Enrollment Status' },
-    { key: 'gender', label: 'Gender Identity' },
-  ],
-  LOGS: [
-    { key: 'action', label: 'Action Taken' },
-    { key: 'user', label: 'Responsible User' },
-    { key: 'timestamp', label: 'Timestamp' },
-    { key: 'details', label: 'Audit Details' },
-  ],
-  VIRTUAL_TABLE: []
-};
 
 const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, onDeletePage }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'pages' | 'users'>('pages');

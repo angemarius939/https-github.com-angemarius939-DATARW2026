@@ -9,22 +9,16 @@ import {
 
 interface DocumentsViewProps {
   onNotify: (msg: string, type?: 'success' | 'error') => void;
+  docs: any[];
+  setDocs: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
-const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify }) => {
+const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [docs, setDocs] = useState([
-    { id: 1, name: 'Water_Project_Proposal_Final.pdf', type: 'PDF', category: 'Proposals', size: '2.4 MB', owner: 'Jean B.', date: '2024-03-10' },
-    { id: 2, name: 'MoU_Ministry_of_Health.pdf', type: 'PDF', category: 'Agreements', size: '1.1 MB', owner: 'Admin', date: '2024-01-05' },
-    { id: 3, name: 'Beneficiary_Survey_Results.csv', type: 'CSV', category: 'Field Data', size: '15.2 MB', owner: 'Eric M.', date: '2024-04-12' },
-    { id: 4, name: 'Annual_Impact_Report_2023.docx', type: 'DOCX', category: 'Reports', size: '4.8 MB', owner: 'Marie C.', date: '2024-01-20' },
-    { id: 5, name: 'Site_Photos_Musanze.zip', type: 'ZIP', category: 'Media', size: '45.0 MB', owner: 'Jean B.', date: '2024-02-15' },
-  ]);
 
   const categories = ['All', 'Proposals', 'Reports', 'Agreements', 'Field Data', 'Media'];
 

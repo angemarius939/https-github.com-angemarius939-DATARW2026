@@ -27,30 +27,37 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [tempConfig, setTempConfig] = useState<ViewConfig>(config);
   const [generatedReport, setGeneratedReport] = useState<{title: string, content: React.ReactNode} | null>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(activeProjectId);
+
+  React.useEffect(() => {
+    setSelectedProjectId(activeProjectId);
+  }, [activeProjectId]);
 
   // Mock M&E Data
+  const getMultiplier = () => selectedProjectId ? 0.3 + (selectedProjectId.length % 5) * 0.1 : 1;
+
   const provinceData = [
-    { name: 'Kigali', reach: 4500, target: 5000 },
-    { name: 'Northern', reach: 3200, target: 3000 },
-    { name: 'Southern', reach: 2800, target: 3500 },
-    { name: 'Eastern', reach: 5100, target: 4500 },
-    { name: 'Western', reach: 1900, target: 2500 },
+    { name: 'Kigali', reach: Math.round(4500 * getMultiplier()), target: Math.round(5000 * getMultiplier()) },
+    { name: 'Northern', reach: Math.round(3200 * getMultiplier()), target: Math.round(3000 * getMultiplier()) },
+    { name: 'Southern', reach: Math.round(2800 * getMultiplier()), target: Math.round(3500 * getMultiplier()) },
+    { name: 'Eastern', reach: Math.round(5100 * getMultiplier()), target: Math.round(4500 * getMultiplier()) },
+    { name: 'Western', reach: Math.round(1900 * getMultiplier()), target: Math.round(2500 * getMultiplier()) },
   ];
 
   const trendData = [
-    { month: 'Jan', responses: 400, satisfaction: 82 },
-    { month: 'Feb', responses: 600, satisfaction: 85 },
-    { month: 'Mar', responses: 800, satisfaction: 81 },
-    { month: 'Apr', responses: 1100, satisfaction: 88 },
-    { month: 'May', responses: 1400, satisfaction: 90 },
-    { month: 'Jun', responses: 1800, satisfaction: 92 },
+    { month: 'Jan', responses: Math.round(400 * getMultiplier()), satisfaction: 82 },
+    { month: 'Feb', responses: Math.round(600 * getMultiplier()), satisfaction: 85 },
+    { month: 'Mar', responses: Math.round(800 * getMultiplier()), satisfaction: 81 },
+    { month: 'Apr', responses: Math.round(1100 * getMultiplier()), satisfaction: 88 },
+    { month: 'May', responses: Math.round(1400 * getMultiplier()), satisfaction: 90 },
+    { month: 'Jun', responses: Math.round(1800 * getMultiplier()), satisfaction: 92 },
   ];
 
   const categoryData = [
-    { name: 'Health', value: 40, color: '#4f46e5' },
-    { name: 'Education', value: 30, color: '#10b981' },
-    { name: 'WASH', value: 20, color: '#f59e0b' },
-    { name: 'Livelihoods', value: 10, color: '#ef4444' },
+    { name: 'Health', value: Math.round(40 * getMultiplier()), color: '#4f46e5' },
+    { name: 'Education', value: Math.round(30 * getMultiplier()), color: '#10b981' },
+    { name: 'WASH', value: Math.round(20 * getMultiplier()), color: '#f59e0b' },
+    { name: 'Livelihoods', value: Math.round(10 * getMultiplier()), color: '#ef4444' },
   ];
 
   const templates = [
@@ -60,18 +67,25 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
   ];
 
   const getReportContent = (title: string) => {
+    const contextName = selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.name : 'Organization-wide Context';
+    
     switch (title) {
       case 'Project Progress Report':
         return (
           <div className="space-y-6">
+            <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 mb-4">
+               <p className="text-sm font-bold text-indigo-900">
+                 Context: {contextName}
+               </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-slate-50 p-4 rounded-xl">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Budget</p>
-                <p className="text-2xl font-black text-slate-900">450M FRW</p>
+                <p className="text-2xl font-black text-slate-900">{Math.round(450 * getMultiplier())}M FRW</p>
               </div>
               <div className="bg-slate-50 p-4 rounded-xl">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Spent</p>
-                <p className="text-2xl font-black text-slate-900">210M FRW</p>
+                <p className="text-2xl font-black text-slate-900">{Math.round(210 * getMultiplier())}M FRW</p>
               </div>
             </div>
             <div>
@@ -92,14 +106,19 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
       case 'Beneficiary Impact Brief':
         return (
           <div className="space-y-6">
+            <div className="bg-green-50 p-4 rounded-xl border border-green-100 mb-4">
+               <p className="text-sm font-bold text-green-900">
+                 Context: {contextName}
+               </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-green-50 p-4 rounded-xl border border-green-100">
                 <p className="text-xs font-bold text-green-600 uppercase tracking-widest">Total Reached</p>
-                <p className="text-3xl font-black text-green-700">12,450</p>
+                <p className="text-3xl font-black text-green-700">{(12450 * getMultiplier()).toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
               </div>
               <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                 <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Target Achievement</p>
-                <p className="text-3xl font-black text-indigo-700">89%</p>
+                <p className="text-3xl font-black text-indigo-700">{Math.min(100, Math.round(89 + (getMultiplier() * 5)))}%</p>
               </div>
             </div>
             <div>
@@ -130,6 +149,11 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
       case 'Data Audit Summary':
         return (
           <div className="space-y-6">
+            <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 mb-4">
+               <p className="text-sm font-bold text-amber-900">
+                 Context: {contextName}
+               </p>
+            </div>
             <div className="flex items-center gap-4 p-4 bg-amber-50 border border-amber-100 rounded-xl">
               <div className="p-3 bg-amber-100 text-amber-600 rounded-lg">
                 <CheckCircle size={24} />
@@ -170,7 +194,8 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
     setTimeout(() => {
       setIsGenerating(false);
       setGeneratedReport({ title, content: getReportContent(title) });
-      onNotify(`${title} compiled for selected context`, "success");
+      const contextName = selectedProjectId ? projects.find(p => p.id === selectedProjectId)?.name : 'organization-wide context';
+      onNotify(`${title} compiled for ${contextName}`, "success");
     }, 2500);
   };
 
@@ -181,12 +206,27 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
           <h1 className="text-3xl font-black text-slate-900 tracking-tight">{tempConfig.title}</h1>
           <p className="text-slate-500 font-medium">{tempConfig.subtitle}</p>
         </div>
-        <button 
-          onClick={() => setIsConfigOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
-        >
-          <Sliders size={14} /> Customize Page
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <select
+              className="appearance-none pl-4 pr-10 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer"
+              value={selectedProjectId || ''}
+              onChange={(e) => setSelectedProjectId(e.target.value || null)}
+            >
+              <option value="">Organization-wide Reports</option>
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            <Filter size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          </div>
+          <button 
+            onClick={() => setIsConfigOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+          >
+            <Sliders size={14} /> Customize Page
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
@@ -333,7 +373,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
         <div className="flex-1 space-y-6 relative z-10">
           <div className="bg-indigo-500/20 text-indigo-300 px-4 py-1.5 rounded-full text-[10px] font-black uppercase w-fit tracking-[0.3em] border border-indigo-500/30">Intelligence Hub</div>
           <h2 className="text-4xl font-black leading-tight">Advanced AI Insights Engine</h2>
-          <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-xl">Leverage high-performance AI to analyze {activeProjectId ? 'this specific project' : 'cross-organizational data'} for hidden patterns, risks, and predictive outcomes.</p>
+          <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-xl">Leverage high-performance AI to analyze {selectedProjectId ? 'this specific project' : 'cross-organizational data'} for hidden patterns, risks, and predictive outcomes.</p>
           <button className="bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-slate-100 transition-all shadow-xl">Engage Analysis</button>
         </div>
       </div>

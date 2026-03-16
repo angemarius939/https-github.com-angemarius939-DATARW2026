@@ -16,7 +16,7 @@ import DataAnalysisView from './components/DataAnalysisView';
 import DatasetsView from './components/DatasetsView';
 import FieldAppView from './components/FieldAppView';
 import AIGeneratorView from './components/AIGeneratorView';
-import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser } from './types';
+import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser, PageWidget } from './types';
 import { 
   LayoutDashboard, FileText, FolderKanban, Settings, LogOut, 
   Bell, Users, PieChart, ShieldAlert, UserPlus, 
@@ -43,6 +43,7 @@ const App: React.FC = () => {
   ]);
   const [workflows, setWorkflows] = useState<WorkflowAction[]>([]);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
+  const [dashboardWidgets, setDashboardWidgets] = useState<PageWidget[]>([]);
   const [dynamicForms, setDynamicForms] = useState<FormDefinition[]>([]);
   const [formSubmissions, setFormSubmissions] = useState<FormSubmission[]>([]);
   const [users, setUsers] = useState<AppUser[]>([
@@ -62,9 +63,17 @@ const App: React.FC = () => {
   const [pageConfigs, setPageConfigs] = useState<PageConfigs>({});
   const [shouldTriggerProjectCreate, setShouldTriggerProjectCreate] = useState(false);
 
+  const [globalDocuments, setGlobalDocuments] = useState<any[]>([
+    { id: 1, name: 'Water_Project_Proposal_Final.pdf', type: 'PDF', category: 'Proposals', size: '2.4 MB', owner: 'Jean B.', date: '2024-03-10', content: 'Proposal for providing clean water to the Northern Province. Focus on borehole drilling and community training.' },
+    { id: 2, name: 'MoU_Ministry_of_Health.pdf', type: 'PDF', category: 'Agreements', size: '1.1 MB', owner: 'Admin', date: '2024-01-05', content: 'Memorandum of Understanding with the Ministry of Health for the Maternal Health Clinic project.' },
+    { id: 3, name: 'Beneficiary_Survey_Results.csv', type: 'CSV', category: 'Field Data', size: '15.2 MB', owner: 'Eric M.', date: '2024-04-12', content: 'Survey results showing 85% satisfaction with the new agricultural training programs.' },
+    { id: 4, name: 'Annual_Impact_Report_2023.docx', type: 'DOCX', category: 'Reports', size: '4.8 MB', owner: 'Marie C.', date: '2024-01-20', content: 'Annual report detailing the impact of 2023 projects. 15,000 beneficiaries reached across 3 provinces.' },
+    { id: 5, name: 'Site_Photos_Musanze.zip', type: 'ZIP', category: 'Media', size: '45.0 MB', owner: 'Jean B.', date: '2024-02-15', content: '' },
+  ]);
+
   const [projects, setProjects] = useState<Project[]>([
     { 
-      id: '1', name: 'Clean Water Initiative', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
+      id: '1', name: 'Clean Water Initiative', description: 'Providing clean and safe drinking water to rural communities.', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', endDate: '2025-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
       thematicAreas: ['WASH', 'Health'],
       interventions: [
         { id: 'i1', name: 'Borehole Drilling', type: 'Infrastructure', targetDemographic: 'Rural Communities', startDate: '2024-02-01', endDate: '2024-08-01', status: 'Completed', budgetAllocated: 20000000, beneficiariesReached: 800, description: 'Drilling 5 new boreholes in Musanze district.' },
@@ -78,7 +87,7 @@ const App: React.FC = () => {
       ]
     },
     { 
-      id: '2', name: 'Rural Education Support', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, beneficiaries: 850, startDate: '2024-03-15', manager: 'Marie Claire', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
+      id: '2', name: 'Rural Education Support', description: 'Improving access to quality education in remote areas.', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, beneficiaries: 850, startDate: '2024-03-15', endDate: '2025-03-15', manager: 'Marie Claire', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
       thematicAreas: ['Education', 'Youth Empowerment'],
       interventions: [
         { id: 'i3', name: 'School Supply Distribution', type: 'Distribution', targetDemographic: 'Primary Students', startDate: '2024-04-01', endDate: '2024-05-01', status: 'Completed', budgetAllocated: 8000000, beneficiariesReached: 850, description: 'Distributing notebooks, pens, and uniforms.' },
@@ -369,6 +378,8 @@ const App: React.FC = () => {
              <ProjectDashboard 
                organizationName={organizationName} 
                projects={projects} 
+               dashboardWidgets={dashboardWidgets}
+               setDashboardWidgets={setDashboardWidgets}
                onViewProject={(id) => {setActiveProjectId(id); setView(ViewState.PROJECTS)}} 
                onInitializeProject={() => {
                  setShouldTriggerProjectCreate(true);
@@ -423,7 +434,7 @@ const App: React.FC = () => {
                 virtualTables={virtualTables}
              />
            )}
-           {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} />}
+           {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} docs={globalDocuments} setDocs={setGlobalDocuments} />}
            {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={() => {}} />}
            {view === ViewState.TEAM && <TeamView onNotify={notify} />}
            {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages(customPages.some(cp => cp.id === p.id) ? customPages.map(cp => cp.id === p.id ? p : cp) : [...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} />}
