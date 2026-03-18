@@ -2,8 +2,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { AIHubResponse, QuestionType } from "../types";
 
-// Initialize AI Client
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize AI Client lazily
+let aiClient: GoogleGenAI | null = null;
+const getAiClient = () => {
+  if (!aiClient) {
+    const apiKey = process.env.GEMINI_API_KEY || 'dummy_key_for_build';
+    aiClient = new GoogleGenAI({ apiKey });
+  }
+  return aiClient;
+};
 
 export const generateSurveyFromDescription = async (description: string, fileContext?: string): Promise<AIHubResponse> => {
   try {
@@ -25,7 +32,7 @@ export const generateSurveyFromDescription = async (description: string, fileCon
       prompt += `\n\nCONTEXT FROM UPLOADED DOCUMENT:\n${fileContext}\n\nUse the context above to tailor the questions specifically to the project described in the document.`;
     }
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: modelId,
       contents: prompt,
       config: {
@@ -67,7 +74,6 @@ export const generateSurveyFromDescription = async (description: string, fileCon
     throw new Error("No response text received from AI service.");
 
   } catch (error) {
-    console.error("Error generating survey:", error);
     return {
       surveyTitle: "Sample Survey (AI Unavailable)",
       surveyDescription: "Could not connect to AI service. Here is a template.",
@@ -93,7 +99,7 @@ export const translateSurvey = async (surveyData: AIHubResponse, targetLanguage:
       Survey Data: ${JSON.stringify(surveyData)}
     `;
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model: modelId,
       contents: prompt,
       config: {
@@ -106,7 +112,6 @@ export const translateSurvey = async (surveyData: AIHubResponse, targetLanguage:
     }
     throw new Error("Translation failed");
   } catch (error) {
-    console.error("Translation error:", error);
     return surveyData;
   }
 };

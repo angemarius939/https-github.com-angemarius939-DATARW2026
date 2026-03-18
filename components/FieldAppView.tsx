@@ -44,11 +44,19 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
     e.preventDefault();
     if (!activeForm) return;
 
+    // Filter out data for fields that are currently hidden by conditional logic
+    const visibleData: any = {};
+    activeForm.fields.forEach(field => {
+      if (evaluateCondition(field.condition, formData)) {
+        visibleData[field.id] = formData[field.id];
+      }
+    });
+
     const newSubmission: FormSubmission = {
       id: 'sub-' + Date.now(),
       formId: activeForm.id,
       formName: activeForm.name,
-      data: formData,
+      data: visibleData,
       timestamp: new Date().toISOString(),
       status: isOffline ? 'pending' : 'synced'
     };
@@ -94,6 +102,25 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
   const clearSynced = () => {
     setSyncQueue(prev => prev.filter(item => item.status !== 'synced'));
     onNotify("Cleared synced items from history.", "success");
+  };
+
+  const evaluateCondition = (condition: any, data: any) => {
+    if (!condition || !condition.fieldId) return true;
+    
+    const { fieldId, operator, value } = condition;
+    const fieldValue = data[fieldId];
+    
+    const strFieldValue = String(fieldValue || '').toLowerCase();
+    const strValue = String(value || '').toLowerCase();
+
+    switch (operator) {
+      case 'equals': return strFieldValue === strValue;
+      case 'not_equals': return strFieldValue !== strValue;
+      case 'contains': return strFieldValue.includes(strValue);
+      case 'greater_than': return Number(fieldValue || 0) > Number(value || 0);
+      case 'less_than': return Number(fieldValue || 0) < Number(value || 0);
+      default: return true;
+    }
   };
 
   const pendingCount = syncQueue.filter(item => item.status === 'pending').length;
@@ -190,8 +217,8 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
             <p className="text-xs text-slate-500 mb-6">{activeForm.description}</p>
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {activeForm.fields.map(field => (
-                <div key={field.id} className="space-y-1.5">
+              {activeForm.fields.filter(field => evaluateCondition(field.condition, formData)).map(field => (
+                <div key={field.id} className="space-y-1.5 animate-fade-in">
                   <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
                     {field.label} {field.required && <span className="text-red-500">*</span>}
                   </label>

@@ -147,12 +147,15 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
       
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: `Given these NGO projects in Rwanda:\n\n${summary}\n\nGlobal Documents:\n${globalDocsContext}\n\nProvide a 2-sentence strategic health summary of the organization's projects. Explicitly identify which province needs the most attention based on the project statuses, progress, spending, narrative, and documents.`
+        contents: `Given these NGO projects in Rwanda:\n\n${summary}\n\nGlobal Documents:\n${globalDocsContext}\n\nProvide a 3-sentence strategic summary of the organization's projects. The first sentence should summarize overall health. The second sentence should identify specific risks or budget variances. The third sentence MUST provide a concrete, actionable recommendation for the project manager to address the identified issues.`
       });
       setAiInsight(response.text || "Operations are stable across the portfolio. Continue standard monitoring protocols.");
-    } catch (e) {
-      console.error("AI Insight Error:", e);
-      setAiInsight("Operations are currently on track. Ensure budgetary compliance in the Eastern Province next month.");
+    } catch (e: any) {
+      if (e?.status === 429 || e?.message?.includes('429') || e?.message?.includes('RESOURCE_EXHAUSTED')) {
+        setAiInsight("AI Insights are currently unavailable due to API quota limits. Operations are currently on track.");
+      } else {
+        setAiInsight("Operations are currently on track. Ensure budgetary compliance in the Eastern Province next month.");
+      }
     } finally {
       setIsAiLoading(false);
     }

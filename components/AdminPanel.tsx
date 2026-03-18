@@ -12,13 +12,13 @@ import {
   Bell, CheckSquare as CheckSquareIcon, Send, RefreshCw,
   Clock, AlertTriangle, ChevronUp, ChevronDown, Settings2,
   Trash, UserPlus, UserCheck, UserX, User, ShieldCheck,
-  MoreVertical, ShieldAlert, Users, Filter, FolderKanban, Link2
+  MoreVertical, ShieldAlert, Users, Filter, FolderKanban, Link2, Briefcase
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 import { 
   CustomPage, VirtualTable, VirtualField, 
   WorkflowAction, PageWidget, DataSourceType,
-  FormDefinition, FormFieldDefinition, Project, AppUser
+  FormDefinition, FormFieldDefinition, Project, AppUser, RoleDefinition, ProjectTemplate
 } from '../types';
 
 interface AdminPanelProps {
@@ -33,14 +33,20 @@ interface AdminPanelProps {
   setDynamicForms: (f: FormDefinition[]) => void;
   users: AppUser[];
   setUsers: (u: AppUser[]) => void;
+  roles: RoleDefinition[];
+  setRoles: (r: RoleDefinition[]) => void;
+  projectTemplates: ProjectTemplate[];
+  setProjectTemplates: (pt: ProjectTemplate[]) => void;
   onNotify: (msg: string, type?: 'success' | 'error') => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   projects, customPages, setCustomPages, virtualTables, setVirtualTables, 
-  workflows, setWorkflows, dynamicForms, setDynamicForms, users, setUsers, onNotify 
+  workflows, setWorkflows, dynamicForms, setDynamicForms, users, setUsers, roles, setRoles, 
+  projectTemplates, setProjectTemplates, onNotify 
 }) => {
-  const [activeSection, setActiveSection] = useState<'pages' | 'database' | 'workflows' | 'forms' | 'users'>('pages');
+  const [activeSection, setActiveSection] = useState<'pages' | 'database' | 'workflows' | 'forms' | 'users' | 'projects'>('pages');
+  const [activeUserTab, setActiveUserTab] = useState<'users' | 'roles'>('users');
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -166,7 +172,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   // --- User Management Logic ---
   const handleCreateUser = () => {
-    setEditingItem({ id: '', name: '', email: '', role: 'Field Officer', status: 'ACTIVE', department: '', lastLogin: 'Never', permissions: ['Projects', 'Beneficiaries', 'Field App'] });
+    setEditingItem({ id: '', name: '', email: '', role: 'Field Officer', status: 'ACTIVE', department: '', lastLogin: 'Never' });
+    setIsEditorOpen(true);
+  };
+
+  const handleCreateRole = () => {
+    setEditingItem({ id: '', name: '', description: '', permissions: [], isRole: true });
+    setIsEditorOpen(true);
+  };
+
+  const handleCreateProjectTemplate = () => {
+    setEditingItem({ id: '', name: '', description: '', phases: [], reportingStructure: 'Monthly' });
     setIsEditorOpen(true);
   };
 
@@ -177,6 +193,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setUsers(updated);
     setIsEditorOpen(false);
     onNotify(user.id ? "User profile updated" : "User invitation sent successfully");
+  };
+
+  const handleSaveRole = (role: RoleDefinition) => {
+    const updated = role.id
+      ? roles.map(r => r.id === role.id ? role : r)
+      : [{ ...role, id: 'r-' + Date.now() }, ...roles];
+    setRoles(updated);
+    setIsEditorOpen(false);
+    onNotify(role.id ? "Role permissions updated successfully" : "New role created successfully");
+  };
+
+  const handleSaveProjectTemplate = (template: ProjectTemplate) => {
+    const updated = template.id
+      ? projectTemplates.map(t => t.id === template.id ? template : t)
+      : [{ ...template, id: 'pt-' + Date.now() }, ...projectTemplates];
+    setProjectTemplates(updated);
+    setIsEditorOpen(false);
+    onNotify(template.id ? "Project template updated" : "New project template created");
   };
 
   const toggleUserStatus = (userId: string) => {
@@ -258,7 +292,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <ChevronRight size={14} className={activeSection === 'workflows' ? 'opacity-100' : 'opacity-0'} />
            </button>
-           <div className="pt-4 mt-4 border-t border-slate-200">
+           <div className="pt-4 mt-4 border-t border-slate-200 space-y-1">
              <button 
                onClick={() => setActiveSection('users')}
                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${activeSection === 'users' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-white'}`}
@@ -267,6 +301,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <Users size={18} /> User Management
                 </div>
                 <ChevronRight size={14} className={activeSection === 'users' ? 'opacity-100' : 'opacity-0'} />
+             </button>
+             <button 
+               onClick={() => setActiveSection('projects')}
+               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all ${activeSection === 'projects' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-600 hover:bg-white'}`}
+             >
+                <div className="flex items-center gap-3 font-bold text-sm">
+                  <Briefcase size={18} /> Project Management
+                </div>
+                <ChevronRight size={14} className={activeSection === 'projects' ? 'opacity-100' : 'opacity-0'} />
              </button>
            </div>
         </aside>
@@ -489,6 +532,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
              </div>
            )}
 
+           {activeSection === 'projects' && (
+             <div className="space-y-6 animate-fade-in">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                   <div>
+                      <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <Briefcase size={20} className="text-indigo-600" />
+                        Project Templates
+                      </h2>
+                      <p className="text-sm text-slate-500 font-medium">Define standardized project structures, phases, and reporting requirements.</p>
+                   </div>
+                   <button 
+                     onClick={handleCreateProjectTemplate}
+                     className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                   >
+                      <Plus size={16} /> New Template
+                   </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {projectTemplates.map(template => (
+                      <div key={template.id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col group hover:border-indigo-300 transition-all">
+                         <div className="flex justify-between items-start mb-4">
+                            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                               <Briefcase size={24}/>
+                            </div>
+                            <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button onClick={() => {setEditingItem(template); setIsEditorOpen(true)}} className="p-2 text-slate-400 hover:text-indigo-600 transition-colors"><Edit3 size={18}/></button>
+                               <button onClick={() => setProjectTemplates(projectTemplates.filter(t => t.id !== template.id))} className="p-2 text-slate-400 hover:text-red-500 transition-colors"><Trash2 size={18}/></button>
+                            </div>
+                         </div>
+                         <h3 className="font-black text-lg text-slate-900 mb-1">{template.name}</h3>
+                         <p className="text-sm text-slate-500 line-clamp-2 mb-4 flex-1">{template.description}</p>
+                         <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{template.phases.length} Phases</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 px-2 py-1 rounded-lg">{template.reportingStructure} Reporting</span>
+                         </div>
+                      </div>
+                   ))}
+                   {projectTemplates.length === 0 && (
+                      <div className="col-span-full py-20 text-center border-2 border-dashed border-slate-200 rounded-[2.5rem] bg-white/50">
+                         <Briefcase className="mx-auto text-slate-200 mb-4" size={48} />
+                         <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">No project templates defined</p>
+                      </div>
+                   )}
+                </div>
+             </div>
+           )}
+
            {activeSection === 'users' && (
              <div className="space-y-6 animate-fade-in">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -499,15 +590,41 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </h2>
                       <p className="text-sm text-slate-500 font-medium">Manage user accounts, roles, and platform permissions.</p>
                    </div>
+                   {activeUserTab === 'users' ? (
+                     <button 
+                       onClick={handleCreateUser}
+                       className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                     >
+                        <UserPlus size={16} /> Invite New User
+                     </button>
+                   ) : (
+                     <button 
+                       onClick={handleCreateRole}
+                       className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                     >
+                        <Shield size={16} /> Create New Role
+                     </button>
+                   )}
+                </div>
+
+                <div className="flex bg-slate-100 p-1 rounded-2xl w-fit">
                    <button 
-                     onClick={handleCreateUser}
-                     className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                      onClick={() => setActiveUserTab('users')}
+                      className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeUserTab === 'users' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
                    >
-                      <UserPlus size={16} /> Invite New User
+                      Users
+                   </button>
+                   <button 
+                      onClick={() => setActiveUserTab('roles')}
+                      className={`px-6 py-2.5 text-xs font-black uppercase tracking-widest rounded-xl transition-all ${activeUserTab === 'roles' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+                   >
+                      Roles & Permissions
                    </button>
                 </div>
 
-                <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
+                {activeUserTab === 'users' && (
+                  <>
+                    <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center">
                    <div className="relative flex-1 w-full">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                       <input 
@@ -610,6 +727,49 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                      </div>
                    )}
                 </div>
+                </>
+               )}
+
+               {activeUserTab === 'roles' && (
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {roles.map((role) => (
+                       <div key={role.id} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-6">
+                          <div className="flex justify-between items-start">
+                             <div>
+                                <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                                   <Shield size={20} className="text-indigo-600" />
+                                   {role.name}
+                                </h3>
+                                <p className="text-sm text-slate-500 mt-1">{role.description}</p>
+                             </div>
+                             <button 
+                               onClick={() => {
+                                  setEditingItem({ ...role, isRole: true });
+                                  setIsEditorOpen(true);
+                               }}
+                               className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                             >
+                                <Edit3 size={18} />
+                             </button>
+                          </div>
+                          
+                          <div>
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 mb-3 block">Module Access</label>
+                             <div className="flex flex-wrap gap-2">
+                                {role.permissions.map(perm => (
+                                   <span key={perm} className="px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg text-xs font-bold border border-indigo-100">
+                                      {perm}
+                                   </span>
+                                ))}
+                                {role.permissions.length === 0 && (
+                                   <span className="text-sm text-slate-400 italic">No permissions assigned</span>
+                                )}
+                             </div>
+                          </div>
+                       </div>
+                    ))}
+                 </div>
+               )}
              </div>
            )}
         </div>
@@ -627,6 +787,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                        {activeSection === 'pages' ? <Layout className="text-indigo-400" /> : 
                         activeSection === 'forms' ? <FilePlus className="text-indigo-400" /> :
                         activeSection === 'workflows' ? <Zap className="text-amber-400" /> :
+                        activeSection === 'projects' ? <Briefcase className="text-indigo-400" /> :
                         activeSection === 'users' ? <User className="text-indigo-400" /> :
                         <Database className="text-indigo-400" />}
                        {editingItem?.id ? `Modify ${activeSection.slice(0,-1)}` : `New ${activeSection.slice(0,-1).charAt(0).toUpperCase() + activeSection.slice(1,-1)} Entry`}
@@ -639,7 +800,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                         if(activeSection === 'pages') handleSavePage(editingItem);
                         else if(activeSection === 'forms') handleSaveForm(editingItem);
                         else if(activeSection === 'workflows') handleSaveWorkflow(editingItem);
-                        else if(activeSection === 'users') handleSaveUser(editingItem);
+                        else if(activeSection === 'projects') handleSaveProjectTemplate(editingItem);
+                        else if(activeSection === 'users') {
+                           if (editingItem.isRole) {
+                              handleSaveRole(editingItem);
+                           } else {
+                              handleSaveUser(editingItem);
+                           }
+                        }
                         else handleSaveTable(editingItem);
                       }}
                       className="bg-indigo-600 text-white px-8 py-2 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg"
@@ -735,7 +903,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                      )}
 
                      {/* User Editor Specific Section */}
-                     {activeSection === 'users' && (
+                     {activeSection === 'users' && !editingItem.isRole && (
                         <div className="space-y-8">
                            <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
                               <div className="flex items-center gap-8">
@@ -795,23 +963,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                        value={editingItem.role}
                                        onChange={(e) => {
                                           const newRole = e.target.value;
-                                          let newPermissions = [...(editingItem.permissions || [])];
-                                          if (newRole === 'Admin') {
-                                             newPermissions = ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'];
-                                          } else if (newRole === 'Project Manager') {
-                                             newPermissions = ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'AI Generator'];
-                                          } else if (newRole === 'Field Officer') {
-                                             newPermissions = ['Projects', 'Beneficiaries', 'Field App'];
-                                          } else if (newRole === 'Viewer') {
-                                             newPermissions = ['Projects', 'Reports', 'Documents'];
-                                          }
-                                          setEditingItem({...editingItem, role: newRole, permissions: newPermissions});
+                                          // If they are using role defaults, keep it undefined so they inherit the new role's defaults
+                                          // If they have custom permissions, keep them
+                                          setEditingItem({...editingItem, role: newRole});
                                        }}
                                     >
-                                       <option value="Admin">System Administrator</option>
-                                       <option value="Project Manager">Project Manager</option>
-                                       <option value="Field Officer">Field Officer</option>
-                                       <option value="Viewer">Stakeholder (Read Only)</option>
+                                       {roles.map(r => (
+                                          <option key={r.id} value={r.name}>{r.name}</option>
+                                       ))}
                                     </select>
                                  </div>
                                  <div className="space-y-2">
@@ -834,9 +993,103 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                               </div>
 
                               <div className="space-y-4">
+                                 <div className="flex items-center justify-between px-1">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                       <ShieldCheck size={12} className="text-indigo-600"/> System Access Permissions
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                       <input 
+                                          type="checkbox" 
+                                          className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                          checked={!editingItem.permissions}
+                                          onChange={(e) => {
+                                             if (e.target.checked) {
+                                                setEditingItem({...editingItem, permissions: undefined});
+                                             } else {
+                                                const roleDef = roles.find(r => r.name === editingItem.role);
+                                                setEditingItem({...editingItem, permissions: roleDef ? [...roleDef.permissions] : []});
+                                             }
+                                          }}
+                                       />
+                                       <span className="text-xs font-bold text-slate-600">Use Role Defaults</span>
+                                    </label>
+                                 </div>
+                                 
+                                 {!editingItem.permissions ? (
+                                    <div className="p-6 bg-slate-50 border border-slate-200 rounded-2xl flex items-center gap-4">
+                                       <Shield className="text-slate-400 shrink-0" />
+                                       <div className="text-sm text-slate-600 font-medium">
+                                          This user inherits permissions from the <span className="font-bold text-slate-900">{editingItem.role}</span> role. 
+                                          Uncheck "Use Role Defaults" to assign custom permissions.
+                                       </div>
+                                    </div>
+                                 ) : (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                       {['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'].map(permission => (
+                                          <label key={permission} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${editingItem.permissions?.includes(permission) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                                             <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
+                                                checked={editingItem.permissions?.includes(permission) || false}
+                                                onChange={(e) => {
+                                                   const currentPermissions = editingItem.permissions || [];
+                                                   if (e.target.checked) {
+                                                      setEditingItem({...editingItem, permissions: [...currentPermissions, permission]});
+                                                   } else {
+                                                      setEditingItem({...editingItem, permissions: currentPermissions.filter((p: string) => p !== permission)});
+                                                   }
+                                                }}
+                                             />
+                                             <span className={`text-sm font-bold ${editingItem.permissions?.includes(permission) ? 'text-indigo-900' : 'text-slate-600'}`}>{permission}</span>
+                                          </label>
+                                       ))}
+                                    </div>
+                                 )}
+                              </div>
+
+                              <div className="p-6 bg-amber-50 border border-amber-100 rounded-[2rem] flex gap-5">
+                                 <ShieldAlert className="text-amber-600 shrink-0" />
+                                 <div className="text-xs text-amber-700 font-medium leading-relaxed">
+                                    <span className="font-black">Access Control Notice:</span> Changing a user's role will immediately update their visibility and action permissions across all linked projects and virtual databases. This action is logged for compliance audits.
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                     )}
+
+                     {activeSection === 'users' && editingItem.isRole && (
+                        <div className="space-y-8">
+                           <div className="bg-white p-10 rounded-[3rem] border border-slate-200 shadow-sm space-y-10">
+                              <div className="flex items-center gap-8">
+                                 <div className="w-24 h-24 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 shadow-inner shrink-0">
+                                    <Shield size={48} />
+                                 </div>
+                                 <div className="flex-1 space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Role Name</label>
+                                    <input 
+                                       className="w-full text-3xl font-black text-slate-900 border-none outline-none focus:ring-0 placeholder:text-slate-200" 
+                                       placeholder="e.g. Data Analyst"
+                                       value={editingItem.name}
+                                       onChange={(e) => setEditingItem({...editingItem, name: e.target.value})}
+                                    />
+                                 </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Role Description</label>
+                                 <input 
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                    placeholder="Describe the responsibilities of this role..."
+                                    value={editingItem.description}
+                                    onChange={(e) => setEditingItem({...editingItem, description: e.target.value})}
+                                 />
+                              </div>
+
+                              <div className="space-y-4">
                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                                    <ShieldCheck size={12} className="text-indigo-600"/> System Access Permissions
+                                    <ShieldCheck size={12} className="text-indigo-600"/> Default Module Access Permissions
                                  </label>
+                                 <p className="text-xs text-slate-500 mb-4 px-1">Select the modules that users with this role can access by default. You can override these for individual users later.</p>
                                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'].map(permission => (
                                        <label key={permission} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${editingItem.permissions?.includes(permission) ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
@@ -853,18 +1106,160 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                                 }
                                              }}
                                           />
-                                          <span className={`text-sm font-bold ${editingItem.permissions?.includes(permission) ? 'text-indigo-900' : 'text-slate-600'}`}>{permission}</span>
+                                          <span className={`text-sm font-bold ${editingItem.permissions?.includes(permission) ? 'text-indigo-900' : 'text-slate-700'}`}>{permission}</span>
                                        </label>
                                     ))}
                                  </div>
                               </div>
 
-                              <div className="p-6 bg-amber-50 border border-amber-100 rounded-[2rem] flex gap-5">
-                                 <ShieldAlert className="text-amber-600 shrink-0" />
-                                 <div className="text-xs text-amber-700 font-medium leading-relaxed">
-                                    <span className="font-black">Access Control Notice:</span> Changing a user's role will immediately update their visibility and action permissions across all linked projects and virtual databases. This action is logged for compliance audits.
+                              <div className="space-y-4 pt-6 border-t border-slate-100">
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                                    <ShieldAlert size={12} className="text-amber-600"/> Custom Action Permissions
+                                 </label>
+                                 <p className="text-xs text-slate-500 mb-4 px-1">Define specific actions this role can perform across the platform.</p>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {[
+                                       { id: 'create_project', label: 'Create Projects', desc: 'Can create new projects from templates' },
+                                       { id: 'delete_project', label: 'Delete Projects', desc: 'Can permanently delete projects' },
+                                       { id: 'manage_users', label: 'Manage Users', desc: 'Can invite users and change roles' },
+                                       { id: 'export_data', label: 'Export Data', desc: 'Can download datasets and reports' },
+                                       { id: 'manage_settings', label: 'Manage Settings', desc: 'Can access and modify system settings' },
+                                       { id: 'approve_workflows', label: 'Approve Workflows', desc: 'Can approve or reject automated workflows' }
+                                    ].map(action => (
+                                       <label key={action.id} className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${editingItem.customActions?.includes(action.id) ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                                          <input 
+                                             type="checkbox" 
+                                             className="w-4 h-4 mt-0.5 text-amber-600 rounded focus:ring-amber-500"
+                                             checked={editingItem.customActions?.includes(action.id) || false}
+                                             onChange={(e) => {
+                                                const currentActions = editingItem.customActions || [];
+                                                if (e.target.checked) {
+                                                   setEditingItem({...editingItem, customActions: [...currentActions, action.id]});
+                                                } else {
+                                                   setEditingItem({...editingItem, customActions: currentActions.filter((a: string) => a !== action.id)});
+                                                }
+                                             }}
+                                          />
+                                          <div>
+                                             <span className={`block text-sm font-bold ${editingItem.customActions?.includes(action.id) ? 'text-amber-900' : 'text-slate-700'}`}>{action.label}</span>
+                                             <span className="block text-xs text-slate-500 mt-0.5">{action.desc}</span>
+                                          </div>
+                                       </label>
+                                    ))}
                                  </div>
                               </div>
+                           </div>
+                        </div>
+                     )}
+
+                     {/* Project Template Specific Section */}
+                     {activeSection === 'projects' && (
+                        <div className="space-y-6">
+                           <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
+                              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Reporting Structure</label>
+                              <select 
+                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                 value={editingItem.reportingStructure}
+                                 onChange={(e) => setEditingItem({...editingItem, reportingStructure: e.target.value})}
+                              >
+                                 <option value="Weekly">Weekly Reporting</option>
+                                 <option value="Bi-weekly">Bi-weekly Reporting</option>
+                                 <option value="Monthly">Monthly Reporting</option>
+                                 <option value="Quarterly">Quarterly Reporting</option>
+                              </select>
+                           </div>
+
+                           <div className="flex justify-between items-center px-2">
+                              <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                                 <Briefcase size={20} className="text-indigo-600" /> 
+                                 Project Phases
+                              </h3>
+                              <button 
+                                 onClick={() => {
+                                    const newPhase = { id: 'ph-' + Date.now(), name: 'New Phase', description: '', status: 'Not Started' as const };
+                                    setEditingItem({...editingItem, phases: [...(editingItem.phases || []), newPhase]});
+                                 }}
+                                 className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2"
+                              >
+                                 <Plus size={16}/> Add Phase
+                              </button>
+                           </div>
+
+                           <div className="space-y-4">
+                              {editingItem.phases?.map((phase: any, idx: number) => (
+                                 <div key={phase.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 group/phase hover:border-indigo-300 transition-all relative overflow-hidden">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 opacity-0 group-hover/phase:opacity-100 transition-opacity"></div>
+                                    <div className="flex justify-between items-start mb-4">
+                                       <div className="flex items-center gap-2">
+                                          <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs">{idx + 1}</div>
+                                          <input 
+                                             className="text-lg font-black text-slate-900 border-none outline-none focus:ring-0 placeholder:text-slate-200"
+                                             placeholder="Phase Name"
+                                             value={phase.name}
+                                             onChange={(e) => {
+                                                const updatedPhases = [...editingItem.phases];
+                                                updatedPhases[idx].name = e.target.value;
+                                                setEditingItem({...editingItem, phases: updatedPhases});
+                                             }}
+                                          />
+                                       </div>
+                                       <button 
+                                          onClick={() => {
+                                             const updatedPhases = editingItem.phases.filter((_: any, i: number) => i !== idx);
+                                             setEditingItem({...editingItem, phases: updatedPhases});
+                                          }}
+                                          className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                       >
+                                          <Trash2 size={18}/>
+                                       </button>
+                                    </div>
+                                    <div className="space-y-4">
+                                       <input 
+                                          className="w-full text-sm text-slate-500 border-none outline-none focus:ring-0 placeholder:text-slate-300"
+                                          placeholder="Phase Description"
+                                          value={phase.description}
+                                          onChange={(e) => {
+                                             const updatedPhases = [...editingItem.phases];
+                                             updatedPhases[idx].description = e.target.value;
+                                             setEditingItem({...editingItem, phases: updatedPhases});
+                                          }}
+                                       />
+                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                          <div className="space-y-1">
+                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Start Date</label>
+                                             <input 
+                                                type="date"
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                                value={phase.startDate || ''}
+                                                onChange={(e) => {
+                                                   const updatedPhases = [...editingItem.phases];
+                                                   updatedPhases[idx].startDate = e.target.value;
+                                                   setEditingItem({...editingItem, phases: updatedPhases});
+                                                }}
+                                             />
+                                          </div>
+                                          <div className="space-y-1">
+                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End Date</label>
+                                             <input 
+                                                type="date"
+                                                className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                                                value={phase.endDate || ''}
+                                                onChange={(e) => {
+                                                   const updatedPhases = [...editingItem.phases];
+                                                   updatedPhases[idx].endDate = e.target.value;
+                                                   setEditingItem({...editingItem, phases: updatedPhases});
+                                                }}
+                                             />
+                                          </div>
+                                       </div>
+                                    </div>
+                                 </div>
+                              ))}
+                              {(!editingItem.phases || editingItem.phases.length === 0) && (
+                                 <div className="py-12 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-white/50">
+                                    <p className="text-slate-400 font-bold uppercase text-xs tracking-widest">No phases defined</p>
+                                 </div>
+                              )}
                            </div>
                         </div>
                      )}
@@ -872,6 +1267,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                      {/* Form Builder Specific Section */}
                      {activeSection === 'forms' && (
                         <div className="space-y-6">
+                           <div className="bg-white p-8 rounded-[2rem] border border-slate-200 shadow-sm space-y-6">
+                              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Target Virtual Table</label>
+                              <select 
+                                 className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
+                                 value={editingItem.targetTableId || ''}
+                                 onChange={(e) => setEditingItem({...editingItem, targetTableId: e.target.value})}
+                              >
+                                 <option value="">-- No Target Table --</option>
+                                 {virtualTables.map(table => (
+                                    <option key={table.id} value={table.id}>{table.name}</option>
+                                 ))}
+                              </select>
+                              <p className="text-xs text-slate-500 px-1">Select a virtual table to map form fields to its columns.</p>
+                           </div>
+
                            <div className="flex justify-between items-center px-2">
                               <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
                                  <List size={20} className="text-indigo-600" /> 
@@ -928,18 +1338,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Field Label</label>
                                                 <input 
                                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                   value={field.label}
+                                                   value={field.label || ''}
                                                    onChange={(e) => updateFormField(idx, { label: e.target.value })}
                                                 />
                                              </div>
-                                             <div className="space-y-1.5">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Instructional Placeholder</label>
-                                                <input 
-                                                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
-                                                   value={field.placeholder}
-                                                   onChange={(e) => updateFormField(idx, { placeholder: e.target.value })}
-                                                />
-                                             </div>
+                                             {['text', 'number', 'date'].includes(field.type) && (
+                                                <div className="space-y-1.5">
+                                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Instructional Placeholder</label>
+                                                   <input 
+                                                      className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:ring-2 focus:ring-indigo-500 outline-none"
+                                                      value={field.placeholder || ''}
+                                                      onChange={(e) => updateFormField(idx, { placeholder: e.target.value })}
+                                                   />
+                                                </div>
+                                             )}
                                           </div>
 
                                           {field.type === 'dropdown' && (
@@ -948,34 +1360,161 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                                 <input 
                                                    className="w-full p-3 bg-white border border-indigo-200 rounded-xl font-medium text-indigo-700 outline-none"
                                                    placeholder="Choice 1, Choice 2, Choice 3"
-                                                   value={field.options?.join(', ')}
+                                                   value={field.options?.join(', ') || ''}
                                                    onChange={(e) => updateFormField(idx, { options: e.target.value.split(',').map(s => s.trim()) })}
                                                 />
                                              </div>
                                           )}
 
-                                          <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                                             <div className="flex items-center gap-4">
-                                                <div className="space-y-1">
-                                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Table Mapping</label>
-                                                   <select 
-                                                      className="p-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none"
-                                                      value={field.mapping || ''}
-                                                      onChange={(e) => updateFormField(idx, { mapping: e.target.value })}
-                                                   >
-                                                      <option value="">-- No Mapping --</option>
-                                                      {editingItem.targetTableId && virtualTables.find(t => t.id === editingItem.targetTableId)?.fields.map(f => (
-                                                         <option key={f.id} value={f.name}>{f.label} ({f.name})</option>
-                                                      ))}
-                                                   </select>
+                                          <div className="flex flex-col gap-4 pt-4 border-t border-slate-50">
+                                             <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-4">
+                                                   <div className="space-y-1">
+                                                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Table Mapping</label>
+                                                      <select 
+                                                         className="p-2 bg-white border border-slate-200 rounded-lg text-[10px] font-bold outline-none"
+                                                         value={field.mapping || ''}
+                                                         onChange={(e) => updateFormField(idx, { mapping: e.target.value })}
+                                                      >
+                                                         <option value="">-- No Mapping --</option>
+                                                         {editingItem.targetTableId && virtualTables.find(t => t.id === editingItem.targetTableId)?.fields.map(f => (
+                                                            <option key={f.id} value={f.name}>{f.label} ({f.name})</option>
+                                                         ))}
+                                                      </select>
+                                                   </div>
+                                                </div>
+                                                <button 
+                                                   onClick={() => removeFormField(idx)}
+                                                   className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest"
+                                                >
+                                                   <Trash size={14}/> Delete Field
+                                                </button>
+                                             </div>
+
+                                             {/* Validation Options */}
+                                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                <div className="flex items-center justify-between mb-3">
+                                                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                      <CheckCircle size={12} /> Validation Rules
+                                                   </label>
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                   {field.type === 'text' && (
+                                                      <div className="space-y-1">
+                                                         <label className="text-[10px] font-bold text-slate-400 uppercase">Regex Pattern</label>
+                                                         <input 
+                                                            className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                            placeholder="e.g., ^[0-9]{5}$"
+                                                            value={field.validation?.pattern || ''}
+                                                            onChange={(e) => updateFormField(idx, { validation: { ...field.validation, pattern: e.target.value } })}
+                                                         />
+                                                      </div>
+                                                   )}
+                                                   {field.type === 'number' && (
+                                                      <>
+                                                         <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Min Value</label>
+                                                            <input 
+                                                               type="number"
+                                                               className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                               placeholder="Minimum"
+                                                               value={field.validation?.min ?? ''}
+                                                               onChange={(e) => updateFormField(idx, { validation: { ...field.validation, min: e.target.value ? Number(e.target.value) : undefined } })}
+                                                            />
+                                                         </div>
+                                                         <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Max Value</label>
+                                                            <input 
+                                                               type="number"
+                                                               className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                               placeholder="Maximum"
+                                                               value={field.validation?.max ?? ''}
+                                                               onChange={(e) => updateFormField(idx, { validation: { ...field.validation, max: e.target.value ? Number(e.target.value) : undefined } })}
+                                                            />
+                                                         </div>
+                                                      </>
+                                                   )}
+                                                   {field.type === 'date' && (
+                                                      <>
+                                                         <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Min Date</label>
+                                                            <input 
+                                                               type="date"
+                                                               className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                               value={field.validation?.minDate || ''}
+                                                               onChange={(e) => updateFormField(idx, { validation: { ...field.validation, minDate: e.target.value } })}
+                                                            />
+                                                         </div>
+                                                         <div className="space-y-1">
+                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Max Date</label>
+                                                            <input 
+                                                               type="date"
+                                                               className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                               value={field.validation?.maxDate || ''}
+                                                               onChange={(e) => updateFormField(idx, { validation: { ...field.validation, maxDate: e.target.value } })}
+                                                            />
+                                                         </div>
+                                                      </>
+                                                   )}
                                                 </div>
                                              </div>
-                                             <button 
-                                                onClick={() => removeFormField(idx)}
-                                                className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-red-500 transition-all font-black text-[10px] uppercase tracking-widest"
-                                             >
-                                                <Trash size={14}/> Delete Field
-                                             </button>
+
+                                             {/* Conditional Logic Section */}
+                                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                <div className="flex items-center justify-between mb-3">
+                                                   <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                                      <Filter size={12} /> Conditional Logic
+                                                   </label>
+                                                   {!field.condition && (
+                                                      <button 
+                                                         onClick={() => updateFormField(idx, { condition: { fieldId: '', operator: 'equals', value: '' } })}
+                                                         className="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 uppercase tracking-widest"
+                                                      >
+                                                         + Add Condition
+                                                      </button>
+                                                   )}
+                                                </div>
+                                                
+                                                {field.condition && (
+                                                   <div className="flex flex-wrap items-center gap-3">
+                                                      <span className="text-xs font-medium text-slate-500">Show this field if</span>
+                                                      <select 
+                                                         className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none min-w-[150px]"
+                                                         value={field.condition.fieldId}
+                                                         onChange={(e) => updateFormField(idx, { condition: { ...field.condition!, fieldId: e.target.value } })}
+                                                      >
+                                                         <option value="">-- Select Field --</option>
+                                                         {editingItem.fields.filter((f: FormFieldDefinition) => f.id !== field.id).map((f: FormFieldDefinition) => (
+                                                            <option key={f.id} value={f.id}>{f.label || 'Untitled Field'}</option>
+                                                         ))}
+                                                      </select>
+                                                      <select 
+                                                         className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none"
+                                                         value={field.condition.operator}
+                                                         onChange={(e) => updateFormField(idx, { condition: { ...field.condition!, operator: e.target.value as any } })}
+                                                      >
+                                                         <option value="equals">Equals</option>
+                                                         <option value="not_equals">Does Not Equal</option>
+                                                         <option value="contains">Contains</option>
+                                                         <option value="greater_than">Greater Than</option>
+                                                         <option value="less_than">Less Than</option>
+                                                      </select>
+                                                      <input 
+                                                         className="p-2 bg-white border border-slate-200 rounded-lg text-xs font-bold outline-none flex-1 min-w-[100px]"
+                                                         placeholder="Value..."
+                                                         value={field.condition.value}
+                                                         onChange={(e) => updateFormField(idx, { condition: { ...field.condition!, value: e.target.value } })}
+                                                      />
+                                                      <button 
+                                                         onClick={() => updateFormField(idx, { condition: undefined })}
+                                                         className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                                                         title="Remove Condition"
+                                                      >
+                                                         <X size={14} />
+                                                      </button>
+                                                   </div>
+                                                )}
+                                             </div>
                                           </div>
                                        </div>
                                     </div>
@@ -1020,6 +1559,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                        onChange={(e) => setEditingItem({...editingItem, triggerSourceId: e.target.value})}
                                     >
                                        <option value="">-- Select Source --</option>
+                                       <optgroup label="System Events">
+                                          <option value="system-projects">Project Creation</option>
+                                          <option value="system-users">User Registration</option>
+                                       </optgroup>
                                        <optgroup label="Forms">
                                           {dynamicForms.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                                        </optgroup>

@@ -340,8 +340,11 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
 
       setAiInsights(response.text || "No insights generated.");
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Failed to generate insights.");
+      if (err?.status === 429 || err?.message?.includes('429') || err?.message?.includes('RESOURCE_EXHAUSTED')) {
+        setError("AI insights are currently unavailable due to API quota limits.");
+      } else {
+        setError(err.message || "Failed to generate insights.");
+      }
     } finally {
       setIsGeneratingInsights(false);
     }

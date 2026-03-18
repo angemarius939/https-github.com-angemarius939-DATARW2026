@@ -16,7 +16,7 @@ import DataAnalysisView from './components/DataAnalysisView';
 import DatasetsView from './components/DatasetsView';
 import FieldAppView from './components/FieldAppView';
 import AIGeneratorView from './components/AIGeneratorView';
-import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser, PageWidget } from './types';
+import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser, PageWidget, RoleDefinition, ProjectTemplate } from './types';
 import { 
   LayoutDashboard, FileText, FolderKanban, Settings, LogOut, 
   Bell, Users, PieChart, ShieldAlert, UserPlus, 
@@ -38,27 +38,71 @@ const App: React.FC = () => {
   const [organizationName, setOrganizationName] = useState<string>('SaveRwanda');
   const [userName, setUserName] = useState<string>('Admin User');
   const [virtualTables, setVirtualTables] = useState<VirtualTable[]>([
-    { id: 'beneficiaries', name: 'Beneficiaries', description: 'Core beneficiary registry', fields: [], recordsCount: 1200 },
+    { 
+      id: 'beneficiaries', 
+      name: 'Beneficiaries', 
+      description: 'Core beneficiary registry', 
+      fields: [
+        { id: 'f1', name: 'firstName', label: 'First Name', type: 'TEXT', validation: { required: true } },
+        { id: 'f2', name: 'lastName', label: 'Last Name', type: 'TEXT', validation: { required: true } },
+        { id: 'f3', name: 'age', label: 'Age', type: 'NUMBER', validation: { required: true } },
+        { id: 'f4', name: 'gender', label: 'Gender', type: 'SELECT', options: ['Male', 'Female', 'Other'], validation: { required: true } },
+        { id: 'f5', name: 'location', label: 'Location', type: 'TEXT', validation: { required: true } },
+        { id: 'f6', name: 'status', label: 'Status', type: 'SELECT', options: ['Active', 'Inactive', 'Graduated'], validation: { required: true } },
+        { id: 'f7', name: 'enrollmentDate', label: 'Enrollment Date', type: 'DATE', validation: { required: true } },
+        { id: 'f8', name: 'educationLevel', label: 'Education Level', type: 'SELECT', options: ['None', 'Primary', 'Secondary', 'Tertiary'], validation: { required: false } },
+        { id: 'f9', name: 'householdSize', label: 'Household Size', type: 'NUMBER', validation: { required: false } }
+      ], 
+      recordsCount: 1200 
+    },
     { id: 'projects', name: 'Projects', description: 'Project portfolio', fields: [], recordsCount: 12 },
     { id: 'surveys', name: 'Surveys', description: 'Data collection instruments', fields: [], recordsCount: 45 }
   ]);
-  const [workflows, setWorkflows] = useState<WorkflowAction[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowAction[]>([
+    {
+      id: 'wf-1',
+      name: 'New Project Notification',
+      trigger: 'ON_CREATE',
+      triggerSourceId: 'system-projects',
+      action: 'EMAIL',
+      config: {
+        recipient: 'Project Manager',
+        subject: 'New Project Assigned',
+        message: 'A new project has been created and assigned to you. Please review the details in the system.',
+      }
+    }
+  ]);
   const [customPages, setCustomPages] = useState<CustomPage[]>([]);
   const [dashboardWidgets, setDashboardWidgets] = useState<PageWidget[]>([]);
   const [dynamicForms, setDynamicForms] = useState<FormDefinition[]>([]);
   const [formSubmissions, setFormSubmissions] = useState<FormSubmission[]>([]);
+  const [roles, setRoles] = useState<RoleDefinition[]>([
+    { id: 'r1', name: 'Admin', description: 'System Administrator with full access.', permissions: ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'] },
+    { id: 'r2', name: 'Project Manager', description: 'Manages projects, documents, and surveys.', permissions: ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'AI Generator'] },
+    { id: 'r3', name: 'Field Officer', description: 'Field data collection and beneficiary management.', permissions: ['Projects', 'Beneficiaries', 'Field App'] },
+    { id: 'r4', name: 'Viewer', description: 'Read-only access to reports and documents.', permissions: ['Projects', 'Reports', 'Documents'] },
+  ]);
+  const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
   const [users, setUsers] = useState<AppUser[]>([
-    { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations', permissions: ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'Field App', 'Admin Panel', 'AI Generator'] },
-    { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs', permissions: ['Projects', 'Documents', 'Surveys', 'Reports', 'Beneficiaries', 'Data Analysis', 'Datasets', 'AI Generator'] },
-    { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field', permissions: ['Projects', 'Beneficiaries', 'Field App'] },
-    { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E', permissions: ['Projects', 'Reports', 'Documents'] },
+    { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
+    { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
+    { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
+    { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
   ]);
   const [currentUserId, setCurrentUserId] = useState<string>('u1');
   const currentUser = users.find(u => u.id === currentUserId) || users[0];
 
   const hasPermission = (permission: string) => {
     if (currentUser.role === 'Admin') return true;
-    return currentUser.permissions?.includes(permission);
+    
+    // If user has specific overrides (permissions array exists), use them
+    if (currentUser.permissions) {
+       return currentUser.permissions.includes(permission);
+    }
+    
+    // Otherwise fallback to role permissions
+    const roleDef = roles.find(r => r.name === currentUser.role);
+    return roleDef?.permissions.includes(permission) || false;
   };
 
   const [pageConfigs, setPageConfigs] = useState<PageConfigs>({});
@@ -459,6 +503,10 @@ const App: React.FC = () => {
                setDynamicForms={setDynamicForms}
                users={users}
                setUsers={setUsers}
+               roles={roles}
+               setRoles={setRoles}
+               projectTemplates={projectTemplates}
+               setProjectTemplates={setProjectTemplates}
                onNotify={notify} 
              />
            )}
@@ -470,12 +518,12 @@ const App: React.FC = () => {
                 setGlobalBeneficiaries={setBeneficiaries} 
                 onNotify={notify} 
                 config={getPageConfig('BENEFICIARIES')} 
-                onSaveConfig={() => {}} 
+                onSaveConfig={(config) => setPageConfigs(prev => ({ ...prev, [activeProjectId || 'global']: { ...prev[activeProjectId || 'global'], BENEFICIARIES: { ...prev[activeProjectId || 'global']?.BENEFICIARIES, ...config } as ViewConfig } }))} 
                 virtualTables={virtualTables}
              />
            )}
            {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} docs={globalDocuments} setDocs={setGlobalDocuments} />}
-           {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={() => {}} />}
+           {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={(config) => setPageConfigs(prev => ({ ...prev, [activeProjectId || 'global']: { ...prev[activeProjectId || 'global'], REPORTS: { ...prev[activeProjectId || 'global']?.REPORTS, ...config } as ViewConfig } }))} />}
            {view === ViewState.TEAM && <TeamView onNotify={notify} />}
            {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages(customPages.some(cp => cp.id === p.id) ? customPages.map(cp => cp.id === p.id ? p : cp) : [...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} />}
            {view === ViewState.CUSTOM_PAGE && activeCustomPage && <CustomPageView page={activeCustomPage} />}

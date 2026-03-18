@@ -5,9 +5,9 @@ import {
   MapPin, CheckCircle, Target, Activity, Clock, User,
   List, LayoutGrid, AlertTriangle, CheckSquare, X,
   PieChart as PieChartIcon, LineChart, Plus, Edit2, Trash2,
-  FileText, Upload, Sparkles, Loader2
+  FileText, Upload, Sparkles, Loader2, Network, Link
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
 import { RichTextEditor } from './RichTextEditor';
 
@@ -20,7 +20,7 @@ interface ProjectDetailViewProps {
 }
 
 const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, onOpenWorkspace, onNavigateToAnalysis, onUpdateProject }) => {
-  const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD'>('LIST');
+  const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD' | 'GANTT' | 'GRAPH'>('LIST');
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
   const [editingPartnerId, setEditingPartnerId] = useState<string | null>(null);
   const [partnerForm, setPartnerForm] = useState<Partial<ProjectPartner>>({
@@ -50,6 +50,8 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
   const [selectedRiskId, setSelectedRiskId] = useState<string | null>(null);
 
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [linkForm, setLinkForm] = useState({ source: '', target: '' });
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [activityForm, setActivityForm] = useState<Partial<ProjectActivity>>({
     name: '',
@@ -59,7 +61,8 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
     endDate: new Date().toISOString().split('T')[0],
     assignedTo: '',
     completionPercentage: 0,
-    linkedOutputId: ''
+    linkedOutputId: '',
+    dependencies: []
   });
 
   const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
@@ -105,9 +108,12 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
       });
       
       setAiInsight(response.text || "Analysis complete. No specific insights generated.");
-    } catch (e) {
-      console.error("AI Insight Error:", e);
-      setAiInsight("Failed to generate insight. Please check your API key and try again.");
+    } catch (e: any) {
+      if (e?.status === 429 || e?.message?.includes('429') || e?.message?.includes('RESOURCE_EXHAUSTED')) {
+        setAiInsight("AI Insights are currently unavailable due to API quota limits. Please try again later.");
+      } else {
+        setAiInsight("Failed to generate insight. Please check your API key and try again.");
+      }
     } finally {
       setIsAiLoading(false);
     }
@@ -149,7 +155,7 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
   const handleOpenActivityModal = (activity?: ProjectActivity) => {
     if (activity) {
       setEditingActivityId(activity.id);
-      setActivityForm(activity);
+      setActivityForm({ ...activity, dependencies: activity.dependencies || [] });
     } else {
       setEditingActivityId(null);
       setActivityForm({
@@ -160,7 +166,8 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
         endDate: new Date().toISOString().split('T')[0],
         assignedTo: '',
         completionPercentage: 0,
-        linkedOutputId: ''
+        linkedOutputId: '',
+        dependencies: []
       });
     }
     setIsActivityModalOpen(true);
@@ -178,7 +185,8 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
       endDate: activityForm.endDate || new Date().toISOString().split('T')[0],
       assignedTo: activityForm.assignedTo,
       completionPercentage: Number(activityForm.completionPercentage) || 0,
-      linkedOutputId: activityForm.linkedOutputId || ''
+      linkedOutputId: activityForm.linkedOutputId || '',
+      dependencies: activityForm.dependencies || []
     };
 
     let updatedActivities;
@@ -193,6 +201,25 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
       activities: updatedActivities
     });
     setIsActivityModalOpen(false);
+  };
+
+  const handleSaveLink = () => {
+    if (!onUpdateProject || !linkForm.source || !linkForm.target || linkForm.source === linkForm.target) return;
+    const targetActivity = project.activities?.find(a => a.id === linkForm.target);
+    if (!targetActivity) return;
+    
+    const newDeps = [...(targetActivity.dependencies || [])];
+    if (!newDeps.includes(linkForm.source)) {
+      newDeps.push(linkForm.source);
+    }
+    
+    const updatedActivities = (project.activities || []).map(a => 
+      a.id === linkForm.target ? { ...a, dependencies: newDeps } : a
+    );
+    
+    onUpdateProject({ ...project, activities: updatedActivities });
+    setIsLinkModalOpen(false);
+    setLinkForm({ source: '', target: '' });
   };
 
   const handleDeleteActivity = (id: string) => {
@@ -354,6 +381,47 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
   };
 
   const kanbanColumns = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'Cancelled'];
+
+  // Generate mock progress data based on start date and current progress
+  const generateProgressData = () => {
+    const start = new Date(project.startDate);
+    const end = project.endDate ? new Date(project.endDate) : new Date();
+    const now = new Date();
+    const actualEnd = end > now ? now : end;
+    
+    const months = [];
+    let current = new Date(start);
+    
+    // Calculate total months
+    let totalMonths = (actualEnd.getFullYear() - start.getFullYear()) * 12 + (actualEnd.getMonth() - start.getMonth());
+    if (totalMonths <= 0) totalMonths = 1;
+
+    const progressIncrement = project.progress / totalMonths;
+    
+    let currentProgress = 0;
+    while (current <= actualEnd) {
+      months.push({
+        month: current.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        progress: Math.min(Math.round(currentProgress), project.progress)
+      });
+      currentProgress += progressIncrement;
+      current.setMonth(current.getMonth() + 1);
+    }
+    
+    // Ensure the last point matches current progress
+    if (months.length > 0) {
+      months[months.length - 1].progress = project.progress;
+    } else {
+      months.push({
+        month: start.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        progress: project.progress
+      });
+    }
+    
+    return months;
+  };
+
+  const progressData = generateProgressData();
 
   return (
     <div className="flex flex-col h-full animate-fade-in bg-white h-screen overflow-hidden relative">
@@ -655,6 +723,34 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
             </div>
           </div>
 
+          {/* Progress Over Time */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
+              <LineChart className="text-indigo-600" size={20} /> Progress Over Time
+            </h4>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <RechartsLineChart data={progressData} margin={{ top: 5, right: 20, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dx={-10} domain={[0, 100]} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: number) => [`${value}%`, 'Progress']}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="progress" 
+                    stroke="#4f46e5" 
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }}
+                    activeDot={{ r: 6, fill: '#4f46e5', strokeWidth: 0 }}
+                  />
+                </RechartsLineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
           {/* Narrative & AI Insights Section */}
           <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
             <div className="flex justify-between items-center mb-6">
@@ -800,14 +896,34 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                   >
                     <LayoutGrid size={14} /> Board View
                   </button>
+                  <button 
+                    onClick={() => setActivityViewMode('GANTT')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activityViewMode === 'GANTT' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Calendar size={14} /> Gantt View
+                  </button>
+                  <button 
+                    onClick={() => setActivityViewMode('GRAPH')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${activityViewMode === 'GRAPH' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  >
+                    <Network size={14} /> Dependency Graph
+                  </button>
                 </div>
                 {onUpdateProject && (
-                  <button 
-                    onClick={() => handleOpenActivityModal()}
-                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm"
-                  >
-                    <Plus size={16} /> Add Activity
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setIsLinkModalOpen(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                      <Link size={16} /> Link Activities
+                    </button>
+                    <button 
+                      onClick={() => handleOpenActivityModal()}
+                      className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors shadow-sm"
+                    >
+                      <Plus size={16} /> Add Activity
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -835,9 +951,17 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                       <tr key={activity.id} className="hover:bg-slate-50 transition-colors group">
                         <td className="py-4 pr-4">
                           <p className="font-bold text-slate-900 text-sm">{activity.name}</p>
-                          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                            <User size={12} /> {activity.assignedTo}
-                          </p>
+                          <div className="flex items-center gap-3 mt-1">
+                            <p className="text-xs text-slate-500 flex items-center gap-1">
+                              <User size={12} /> {activity.assignedTo}
+                            </p>
+                            {activity.dependencies && activity.dependencies.length > 0 && (
+                              <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title={`Depends on: ${activity.dependencies.map(d => project.activities?.find(a => a.id === d)?.name).join(', ')}`}>
+                                <AlertTriangle size={10} />
+                                {activity.dependencies.length} dep(s)
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="py-4 pr-4">
                           <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600">
@@ -901,7 +1025,7 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                   </tbody>
                 </table>
               </div>
-            ) : (
+            ) : activityViewMode === 'BOARD' ? (
               <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar">
                 {kanbanColumns.map(column => {
                   const columnActivities = project.activities.filter(a => a.status === column);
@@ -974,6 +1098,21 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                                 </div>
                               </div>
                             </div>
+                            {activity.dependencies && activity.dependencies.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-slate-100">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Dependencies</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {activity.dependencies.map(depId => {
+                                    const dep = project.activities?.find(a => a.id === depId);
+                                    return dep ? (
+                                      <span key={depId} className="px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded text-[9px] font-bold truncate max-w-[120px]" title={dep.name}>
+                                        {dep.name}
+                                      </span>
+                                    ) : null;
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         ))}
                         {columnActivities.length === 0 && (
@@ -986,7 +1125,269 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                   );
                 })}
               </div>
-            )}
+            ) : activityViewMode === 'GANTT' ? (
+              <div className="overflow-x-auto pb-4 custom-scrollbar">
+                {(() => {
+                  const activities = project.activities || [];
+                  if (activities.length === 0) return null;
+                  
+                  const minDate = new Date(Math.min(...activities.map(a => new Date(a.startDate).getTime())));
+                  const maxDate = new Date(Math.max(...activities.map(a => new Date(a.endDate).getTime())));
+                  minDate.setDate(minDate.getDate() - 3);
+                  maxDate.setDate(maxDate.getDate() + 3);
+                  const totalDays = Math.max((maxDate.getTime() - minDate.getTime()) / (1000 * 3600 * 24), 1);
+                  
+                  return (
+                    <div className="min-w-[800px]">
+                      {/* Timeline Header */}
+                      <div className="flex border-b border-slate-200 pb-2 mb-4 relative h-6">
+                        <div className="w-48 shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-400">Activity</div>
+                        <div className="flex-1 relative">
+                          <div className="absolute left-0 text-[10px] font-bold text-slate-400">{minDate.toLocaleDateString()}</div>
+                          <div className="absolute right-0 text-[10px] font-bold text-slate-400">{maxDate.toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Gantt Rows */}
+                      <div className="flex relative">
+                        {/* Names Column */}
+                        <div className="w-48 shrink-0 space-y-4 py-2 z-20 bg-white">
+                          {activities.map(activity => (
+                            <div key={`name-${activity.id}`} className="h-8 flex items-center pr-4 truncate text-sm font-bold text-slate-700" title={activity.name}>
+                              {activity.name}
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {/* Bars Column */}
+                        <div className="flex-1 relative py-2">
+                          {/* SVG Overlay */}
+                          <svg className="absolute inset-0 pointer-events-none z-10 w-full h-full overflow-visible">
+                            <defs>
+                              <marker id="arrowhead" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+                                <polygon points="0 0, 6 3, 0 6" fill="#94a3b8" />
+                              </marker>
+                              <marker id="arrowhead-red" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+                                <polygon points="0 0, 6 3, 0 6" fill="#ef4444" />
+                              </marker>
+                            </defs>
+                            {activities.map((activity, i) => {
+                               if (!activity.dependencies) return null;
+                               return activity.dependencies.map(depId => {
+                                  const depIndex = activities.findIndex(a => a.id === depId);
+                                  if (depIndex === -1) return null;
+                                  const depActivity = activities[depIndex];
+                                  
+                                  const startY = depIndex * 48 + 16;
+                                  const endY = i * 48 + 16;
+                                  
+                                  const depStartOffset = (new Date(depActivity.startDate).getTime() - minDate.getTime()) / (1000 * 3600 * 24);
+                                  const depDuration = (new Date(depActivity.endDate).getTime() - new Date(depActivity.startDate).getTime()) / (1000 * 3600 * 24);
+                                  const depEndPct = ((depStartOffset + depDuration) / totalDays) * 100;
+                                  
+                                  const actStartOffset = (new Date(activity.startDate).getTime() - minDate.getTime()) / (1000 * 3600 * 24);
+                                  const actStartPct = (actStartOffset / totalDays) * 100;
+
+                                  const isForward = actStartPct >= depEndPct;
+                                  
+                                  if (isForward) {
+                                    const midXPct = depEndPct + Math.max((actStartPct - depEndPct) / 2, 0.5);
+                                    return (
+                                      <g key={`${depId}-${activity.id}`}>
+                                        <line x1={`${depEndPct}%`} y1={startY} x2={`${midXPct}%`} y2={startY} stroke="#94a3b8" strokeWidth="1.5" />
+                                        <line x1={`${midXPct}%`} y1={startY} x2={`${midXPct}%`} y2={endY} stroke="#94a3b8" strokeWidth="1.5" />
+                                        <line x1={`${midXPct}%`} y1={endY} x2={`${actStartPct}%`} y2={endY} stroke="#94a3b8" strokeWidth="1.5" markerEnd="url(#arrowhead)" />
+                                      </g>
+                                    );
+                                  } else {
+                                    return (
+                                      <g key={`${depId}-${activity.id}`}>
+                                        <line x1={`${depEndPct}%`} y1={startY} x2={`${depEndPct + 1}%`} y2={startY} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4 2" />
+                                        <line x1={`${depEndPct + 1}%`} y1={startY} x2={`${depEndPct + 1}%`} y2={endY - 12} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4 2" />
+                                        <line x1={`${depEndPct + 1}%`} y1={endY - 12} x2={`${actStartPct - 1}%`} y2={endY - 12} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4 2" />
+                                        <line x1={`${actStartPct - 1}%`} y1={endY - 12} x2={`${actStartPct - 1}%`} y2={endY} stroke="#ef4444" strokeWidth="1.5" strokeDasharray="4 2" />
+                                        <line x1={`${actStartPct - 1}%`} y1={endY} x2={`${actStartPct}%`} y2={endY} stroke="#ef4444" strokeWidth="1.5" markerEnd="url(#arrowhead-red)" strokeDasharray="4 2" />
+                                      </g>
+                                    );
+                                  }
+                               });
+                            })}
+                          </svg>
+
+                          <div className="space-y-4">
+                            {activities.map((activity, index) => {
+                              const startOffset = (new Date(activity.startDate).getTime() - minDate.getTime()) / (1000 * 3600 * 24);
+                              const duration = (new Date(activity.endDate).getTime() - new Date(activity.startDate).getTime()) / (1000 * 3600 * 24);
+                              const leftPct = (startOffset / totalDays) * 100;
+                              const widthPct = Math.max((duration / totalDays) * 100, 1);
+                              
+                              return (
+                                <div key={`bar-${activity.id}`} className="relative h-8 bg-slate-50/50 rounded-full w-full">
+                                  <div 
+                                    className={`absolute top-1 bottom-1 rounded-full shadow-sm flex items-center px-2 overflow-hidden z-20 ${activity.status === 'Completed' ? 'bg-emerald-500' : activity.status === 'In Progress' ? 'bg-indigo-500' : 'bg-slate-400'}`}
+                                    style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                                    title={`${activity.name} (${activity.startDate} to ${activity.endDate})`}
+                                  >
+                                    <div 
+                                      className="absolute left-0 top-0 bottom-0 bg-white/30" 
+                                      style={{ width: `${activity.completionPercentage}%` }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : activityViewMode === 'GRAPH' ? (
+              <div className="overflow-x-auto pb-4 custom-scrollbar min-h-[400px]">
+                {(() => {
+                  const activities = project.activities || [];
+                  if (activities.length === 0) return null;
+
+                  // Topological sort to group by levels
+                  const levels: Record<string, number> = {};
+                  const adj: Record<string, string[]> = {};
+                  const inDegree: Record<string, number> = {};
+                  
+                  activities.forEach(a => {
+                    adj[a.id] = [];
+                    inDegree[a.id] = 0;
+                  });
+                  
+                  activities.forEach(a => {
+                    (a.dependencies || []).forEach(depId => {
+                      if (adj[depId]) {
+                        adj[depId].push(a.id);
+                        inDegree[a.id]++;
+                      }
+                    });
+                  });
+                  
+                  const q: string[] = [];
+                  activities.forEach(a => {
+                    if (inDegree[a.id] === 0) {
+                      q.push(a.id);
+                      levels[a.id] = 0;
+                    }
+                  });
+                  
+                  while (q.length > 0) {
+                    const u = q.shift()!;
+                    adj[u].forEach(v => {
+                      inDegree[v]--;
+                      levels[v] = Math.max(levels[v] || 0, levels[u] + 1);
+                      if (inDegree[v] === 0) {
+                        q.push(v);
+                      }
+                    });
+                  }
+                  
+                  const byLevel: ProjectActivity[][] = [];
+                  activities.forEach(a => {
+                    const lvl = levels[a.id] || 0;
+                    if (!byLevel[lvl]) byLevel[lvl] = [];
+                    byLevel[lvl].push(a);
+                  });
+
+                  // Calculate positions
+                  const nodeWidth = 200;
+                  const nodeHeight = 80;
+                  const gapX = 100;
+                  const gapY = 40;
+                  
+                  const positions: Record<string, {x: number, y: number}> = {};
+                  
+                  byLevel.forEach((levelActs, lvlIdx) => {
+                    const startY = (Math.max(...byLevel.map(l => l.length)) * (nodeHeight + gapY)) / 2 - (levelActs.length * (nodeHeight + gapY)) / 2;
+                    levelActs.forEach((act, actIdx) => {
+                      positions[act.id] = {
+                        x: lvlIdx * (nodeWidth + gapX) + 50,
+                        y: startY + actIdx * (nodeHeight + gapY) + 50
+                      };
+                    });
+                  });
+
+                  const totalWidth = byLevel.length * (nodeWidth + gapX) + 100;
+                  const totalHeight = Math.max(...byLevel.map(l => l.length)) * (nodeHeight + gapY) + 100;
+
+                  return (
+                    <div className="relative" style={{ minWidth: totalWidth, minHeight: totalHeight }}>
+                      <svg className="absolute inset-0 pointer-events-none z-10 w-full h-full overflow-visible">
+                        <defs>
+                          <marker id="arrowhead-graph" markerWidth="6" markerHeight="6" refX="6" refY="3" orient="auto">
+                            <polygon points="0 0, 6 3, 0 6" fill="#94a3b8" />
+                          </marker>
+                        </defs>
+                        {activities.map(activity => {
+                          if (!activity.dependencies) return null;
+                          return activity.dependencies.map(depId => {
+                            const sourcePos = positions[depId];
+                            const targetPos = positions[activity.id];
+                            if (!sourcePos || !targetPos) return null;
+                            
+                            const startX = sourcePos.x + nodeWidth;
+                            const startY = sourcePos.y + nodeHeight / 2;
+                            const endX = targetPos.x;
+                            const endY = targetPos.y + nodeHeight / 2;
+                            
+                            // Draw a curved path
+                            const path = `M ${startX} ${startY} C ${startX + gapX/2} ${startY}, ${endX - gapX/2} ${endY}, ${endX} ${endY}`;
+                            
+                            return (
+                              <path 
+                                key={`${depId}-${activity.id}`} 
+                                d={path} 
+                                fill="none" 
+                                stroke="#cbd5e1" 
+                                strokeWidth="2" 
+                                markerEnd="url(#arrowhead-graph)" 
+                              />
+                            );
+                          });
+                        })}
+                      </svg>
+                      
+                      {activities.map(activity => {
+                        const pos = positions[activity.id];
+                        if (!pos) return null;
+                        
+                        return (
+                          <div 
+                            key={activity.id}
+                            className="absolute bg-white border border-slate-200 rounded-xl shadow-sm p-4 z-20 hover:shadow-md transition-shadow cursor-pointer"
+                            style={{ 
+                              left: pos.x, 
+                              top: pos.y, 
+                              width: nodeWidth, 
+                              height: nodeHeight 
+                            }}
+                            onClick={() => handleOpenActivityModal(activity)}
+                          >
+                            <div className="flex justify-between items-start mb-2">
+                              <h5 className="font-bold text-slate-800 text-sm truncate pr-2" title={activity.name}>{activity.name}</h5>
+                              <span className={`shrink-0 w-2 h-2 rounded-full ${
+                                activity.status === 'Completed' ? 'bg-emerald-500' : 
+                                activity.status === 'In Progress' ? 'bg-indigo-500' : 
+                                activity.status === 'Delayed' ? 'bg-red-500' : 'bg-slate-300'
+                              }`}></span>
+                            </div>
+                            <div className="flex justify-between items-center mt-auto">
+                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">{activity.assignedTo}</span>
+                              <span className="text-[10px] font-black text-indigo-600">{activity.completionPercentage}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            ) : null}
           </div>
 
           {/* Interventions Section */}
@@ -1659,6 +2060,35 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                   />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Dependencies (Activities that must finish before this)</label>
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 max-h-40 overflow-y-auto custom-scrollbar">
+                  {project.activities && project.activities.filter(a => a.id !== editingActivityId).length > 0 ? (
+                    <div className="space-y-2">
+                      {project.activities.filter(a => a.id !== editingActivityId).map(activity => (
+                        <label key={activity.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-xl cursor-pointer transition-colors">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                            checked={(activityForm.dependencies || []).includes(activity.id)}
+                            onChange={(e) => {
+                              const deps = activityForm.dependencies || [];
+                              if (e.target.checked) {
+                                setActivityForm({...activityForm, dependencies: [...deps, activity.id]});
+                              } else {
+                                setActivityForm({...activityForm, dependencies: deps.filter(id => id !== activity.id)});
+                              }
+                            }}
+                          />
+                          <span className="text-sm font-bold text-slate-700">{activity.name}</span>
+                        </label>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-slate-500 italic">No other activities available to set as dependencies.</p>
+                  )}
+                </div>
+              </div>
             </div>
             <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
               <button 
@@ -1673,9 +2103,58 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
         </div>
       )}
 
+      {isLinkModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-300">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Link Activities</h3>
+              <button onClick={() => setIsLinkModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Source Activity (Must finish first)</label>
+                <select 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all"
+                  value={linkForm.source}
+                  onChange={e => setLinkForm({...linkForm, source: e.target.value})}
+                >
+                  <option value="">Select Source Activity</option>
+                  {project.activities?.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Target Activity (Depends on Source)</label>
+                <select 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all"
+                  value={linkForm.target}
+                  onChange={e => setLinkForm({...linkForm, target: e.target.value})}
+                >
+                  <option value="">Select Target Activity</option>
+                  {project.activities?.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveLink} 
+                disabled={!linkForm.source || !linkForm.target || linkForm.source === linkForm.target}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Create Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
-
 
 export default ProjectDetailView;

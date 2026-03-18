@@ -530,6 +530,127 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     return result;
   }, [projects, searchQuery, filterStatus, filterLocation, sortBy]);
 
+  const createModal = isCreateModalOpen && (
+      <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white shrink-0">
+                <div>
+                    <h3 className="text-2xl font-black tracking-tight">Initialize Program Node</h3>
+                    <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest mt-1">Multi-Tenant Platform Logic</p>
+                </div>
+                <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
+                     <div className="w-4 h-0.5 bg-indigo-600"></div> Core Identity
+                  </div>
+                  <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Project Identity</label>
+                      <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="e.g. WASH Resilience Phase II" value={newProjectData.name} onChange={(e) => setNewProjectData({...newProjectData, name: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
+                      <textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300 resize-none h-24" placeholder="Brief project description..." value={newProjectData.description || ''} onChange={(e) => setNewProjectData({...newProjectData, description: e.target.value})}></textarea>
+                  </div>
+                  <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Project Manager</label>
+                      <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Assigned PM Name" value={newProjectData.manager} onChange={(e) => setNewProjectData({...newProjectData, manager: e.target.value})} />
+                  </div>
+                  <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Operational Area</label>
+                      <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Location" value={newProjectData.location} onChange={(e) => setNewProjectData({...newProjectData, location: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-1.5">
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Launch Date</label>
+                         <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.startDate} onChange={(e) => setNewProjectData({...newProjectData, startDate: e.target.value})} />
+                     </div>
+                     <div className="space-y-1.5">
+                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End Date</label>
+                         <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.endDate || ''} onChange={(e) => setNewProjectData({...newProjectData, endDate: e.target.value})} />
+                     </div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
+                     <div className="w-4 h-0.5 bg-indigo-600"></div> Financial Envelope
+                  </div>
+                  <div className="bg-slate-900 rounded-[2rem] p-6 text-white mb-6 relative overflow-hidden">
+                     <div className="relative z-10">
+                        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Initial Budget</p>
+                        <div className="flex items-baseline gap-2">
+                           <span className="text-3xl font-black">RWF {newProjectData.budget?.toLocaleString()}</span>
+                           <Calculator size={16} className="text-indigo-400" />
+                        </div>
+                     </div>
+                     <DollarSign className="absolute -bottom-6 -right-6 opacity-5" size={140} />
+                  </div>
+                  
+                  <div className="space-y-4">
+                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allocation by Category (RWF)</label>
+                     <div className="grid grid-cols-2 gap-4">
+                        {Object.keys(newProjectData.breakdown).map(cat => (
+                           <div key={cat} className="space-y-1.5">
+                              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-1">{cat}</label>
+                              <input 
+                                 type="number" 
+                                 className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
+                                 value={newProjectData.breakdown[cat] || ''}
+                                 onChange={(e) => setNewProjectData({
+                                    ...newProjectData, 
+                                    breakdown: { ...newProjectData.breakdown, [cat]: Number(e.target.value) || 0 }
+                                 })}
+                              />
+                           </div>
+                        ))}
+                     </div>
+                  </div>
+                </div>
+              </div>
+
+              {customFields.length > 0 && (
+                 <div className="mt-12 space-y-6 border-t border-slate-100 pt-8">
+                    <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
+                       <div className="w-4 h-0.5 bg-indigo-600"></div> Custom Attributes
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       {customFields.map(field => (
+                          <div key={field.id} className="space-y-1.5">
+                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{field.label}</label>
+                             <input 
+                                type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+                                placeholder={field.label} 
+                                className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" 
+                                value={newProjectData.customFields?.[field.name] || ''} 
+                                onChange={(e) => setNewProjectData({
+                                   ...newProjectData, 
+                                   customFields: {
+                                      ...(newProjectData.customFields || {}),
+                                      [field.name]: e.target.value
+                                   }
+                                })}
+                             />
+                          </div>
+                       ))}
+                    </div>
+                 </div>
+              )}
+            </div>
+
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50 shrink-0">
+                <button onClick={() => setIsCreateModalOpen(false)} className="px-6 py-3 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
+                <button onClick={handleCreateProject} disabled={isSaving || !newProjectData.name} className="px-12 py-3 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl disabled:opacity-50">
+                {isSaving ? <Loader2 className="animate-spin" size={20} /> : 'Synchronize Project Node'}
+                </button>
+            </div>
+          </div>
+      </div>
+  );
+
   if (viewMode === 'DETAIL' && activeProject) {
     return (
       <ProjectDetailView 
@@ -1403,126 +1524,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                </div>
             )}
 
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden animate-scale-in flex flex-col max-h-[90vh]">
-                      <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-indigo-600 text-white shrink-0">
-                          <div>
-                              <h3 className="text-2xl font-black tracking-tight">Initialize Program Node</h3>
-                              <p className="text-indigo-200 text-xs font-bold uppercase tracking-widest mt-1">Multi-Tenant Platform Logic</p>
-                          </div>
-                          <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
-                      </div>
-                      
-                      <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                          <div className="space-y-6">
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
-                               <div className="w-4 h-0.5 bg-indigo-600"></div> Core Identity
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Project Identity</label>
-                                <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="e.g. WASH Resilience Phase II" value={newProjectData.name} onChange={(e) => setNewProjectData({...newProjectData, name: e.target.value})} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
-                                <textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300 resize-none h-24" placeholder="Brief project description..." value={newProjectData.description || ''} onChange={(e) => setNewProjectData({...newProjectData, description: e.target.value})}></textarea>
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Lead Project Manager</label>
-                                <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Assigned PM Name" value={newProjectData.manager} onChange={(e) => setNewProjectData({...newProjectData, manager: e.target.value})} />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Operational Area</label>
-                                <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Location" value={newProjectData.location} onChange={(e) => setNewProjectData({...newProjectData, location: e.target.value})} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                               <div className="space-y-1.5">
-                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Launch Date</label>
-                                   <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.startDate} onChange={(e) => setNewProjectData({...newProjectData, startDate: e.target.value})} />
-                               </div>
-                               <div className="space-y-1.5">
-                                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">End Date</label>
-                                   <input type="date" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold" value={newProjectData.endDate || ''} onChange={(e) => setNewProjectData({...newProjectData, endDate: e.target.value})} />
-                               </div>
-                            </div>
-                          </div>
-
-                          <div className="space-y-6">
-                            <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
-                               <div className="w-4 h-0.5 bg-indigo-600"></div> Financial Envelope
-                            </div>
-                            <div className="bg-slate-900 rounded-[2rem] p-6 text-white mb-6 relative overflow-hidden">
-                               <div className="relative z-10">
-                                  <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1">Total Initial Budget</p>
-                                  <div className="flex items-baseline gap-2">
-                                     <span className="text-3xl font-black">RWF {newProjectData.budget?.toLocaleString()}</span>
-                                     <Calculator size={16} className="text-indigo-400" />
-                                  </div>
-                               </div>
-                               <DollarSign className="absolute -bottom-6 -right-6 opacity-5" size={140} />
-                            </div>
-                            
-                            <div className="space-y-4">
-                               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allocation by Category (RWF)</label>
-                               <div className="grid grid-cols-2 gap-4">
-                                  {Object.keys(newProjectData.breakdown).map(cat => (
-                                     <div key={cat} className="space-y-1.5">
-                                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider px-1">{cat}</label>
-                                        <input 
-                                           type="number" 
-                                           className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-bold"
-                                           value={newProjectData.breakdown[cat] || ''}
-                                           onChange={(e) => setNewProjectData({
-                                              ...newProjectData, 
-                                              breakdown: { ...newProjectData.breakdown, [cat]: Number(e.target.value) || 0 }
-                                           })}
-                                        />
-                                     </div>
-                                  ))}
-                               </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {customFields.length > 0 && (
-                           <div className="mt-12 space-y-6 border-t border-slate-100 pt-8">
-                              <div className="flex items-center gap-2 text-[10px] font-black uppercase text-indigo-600 tracking-widest">
-                                 <div className="w-4 h-0.5 bg-indigo-600"></div> Custom Attributes
-                              </div>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                 {customFields.map(field => (
-                                    <div key={field.id} className="space-y-1.5">
-                                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">{field.label}</label>
-                                       <input 
-                                          type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
-                                          placeholder={field.label} 
-                                          className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" 
-                                          value={newProjectData.customFields?.[field.name] || ''} 
-                                          onChange={(e) => setNewProjectData({
-                                             ...newProjectData, 
-                                             customFields: {
-                                                ...(newProjectData.customFields || {}),
-                                                [field.name]: e.target.value
-                                             }
-                                          })}
-                                       />
-                                    </div>
-                                 ))}
-                              </div>
-                           </div>
-                        )}
-                      </div>
-
-                      <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50 shrink-0">
-                          <button onClick={() => setIsCreateModalOpen(false)} className="px-6 py-3 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancel</button>
-                          <button onClick={handleCreateProject} disabled={isSaving || !newProjectData.name} className="px-12 py-3 bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-600 transition-all shadow-2xl disabled:opacity-50">
-                          {isSaving ? <Loader2 className="animate-spin" size={20} /> : 'Synchronize Project Node'}
-                          </button>
-                      </div>
-                    </div>
-                </div>
-            )}
+            {createModal}
 
             {isActivityModalOpen && (
                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
@@ -1652,6 +1654,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   }
 
   return (
+    <>
     <div className="max-w-7xl mx-auto p-6 animate-fade-in pb-20">
       <div className="flex justify-between items-end mb-12">
         <div>
@@ -1791,6 +1794,8 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         ))}
       </div>
     </div>
+    {createModal}
+    </>
   );
 };
 

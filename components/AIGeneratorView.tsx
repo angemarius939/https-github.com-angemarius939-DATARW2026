@@ -57,9 +57,12 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ projects, surveys, be
 
       setGeneratedContent(response.text || 'No content generated.');
       onNotify('Content generated successfully', 'success');
-    } catch (error) {
-      console.error('Error generating content:', error);
-      onNotify('Failed to generate content. Please try again.', 'error');
+    } catch (error: any) {
+      if (error?.status === 429 || error?.message?.includes('429') || error?.message?.includes('RESOURCE_EXHAUSTED')) {
+        onNotify('AI generation is currently unavailable due to API quota limits.', 'error');
+      } else {
+        onNotify('Failed to generate content. Please try again.', 'error');
+      }
     } finally {
       setIsGenerating(false);
     }

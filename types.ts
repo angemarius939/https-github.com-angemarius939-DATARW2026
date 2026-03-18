@@ -1,13 +1,21 @@
 
+export interface RoleDefinition {
+  id: string;
+  name: string;
+  description: string;
+  permissions: string[];
+  customActions?: string[];
+}
+
 export interface AppUser {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'Project Manager' | 'Field Officer' | 'Viewer';
+  role: string;
   status: 'ACTIVE' | 'INACTIVE';
   lastLogin: string;
   department: string;
-  permissions: string[];
+  permissions?: string[];
 }
 
 export enum ViewState {
@@ -137,6 +145,7 @@ export interface ProjectActivity {
   assignedTo: string;
   linkedOutputId: string;
   completionPercentage: number;
+  dependencies?: string[];
 }
 
 export interface Beneficiary {
@@ -211,6 +220,22 @@ export interface ProjectDocument {
   content?: string; // Optional text content for AI to read
 }
 
+export interface ProjectPhase {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'Delayed';
+}
+
+export interface ProjectTemplate {
+  id: string;
+  name: string;
+  description: string;
+  phases: ProjectPhase[];
+  reportingStructure: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -238,6 +263,8 @@ export interface Project {
   interventions?: ProjectIntervention[];
   thematicAreas?: string[];
   documents?: ProjectDocument[];
+  templateId?: string;
+  phases?: ProjectPhase[];
 }
 
 // No-Code Platform Types
@@ -259,6 +286,12 @@ export interface VirtualTable {
   recordsCount: number;
 }
 
+export interface FormFieldCondition {
+  fieldId: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'greater_than' | 'less_than';
+  value: string;
+}
+
 export interface FormFieldDefinition {
   id: string;
   type: 'text' | 'number' | 'date' | 'dropdown' | 'checkbox' | 'file';
@@ -267,6 +300,14 @@ export interface FormFieldDefinition {
   required: boolean;
   options?: string[];
   mapping?: string;
+  condition?: FormFieldCondition;
+  validation?: {
+    pattern?: string;
+    min?: number;
+    max?: number;
+    minDate?: string;
+    maxDate?: string;
+  };
 }
 
 export interface FormDefinition {
