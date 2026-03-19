@@ -82,6 +82,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<'All' | 'On Track' | 'Delayed' | 'At Risk'>('All');
   const [filterLocation, setFilterLocation] = useState<string>('All');
+  const [filterYear, setFilterYear] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'Name' | 'Status' | 'Manager' | 'Progress'>('Name');
 
@@ -504,6 +505,11 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     return ['All', ...Array.from(new Set(locations))];
   }, [projects]);
 
+  const uniqueYears = useMemo(() => {
+    const years = projects.map(p => p.startDate ? new Date(p.startDate).getFullYear().toString() : '').filter(Boolean);
+    return ['All', ...Array.from(new Set(years))].sort((a, b) => b.localeCompare(a));
+  }, [projects]);
+
   const filteredProjects = useMemo(() => {
     let result = projects.filter(project => {
         const matchesSearch = project.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -511,7 +517,9 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                               project.manager.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesStatus = filterStatus === 'All' || project.status === filterStatus;
         const matchesLocation = filterLocation === 'All' || project.location === filterLocation;
-        return matchesSearch && matchesStatus && matchesLocation;
+        const projectYear = project.startDate ? new Date(project.startDate).getFullYear().toString() : '';
+        const matchesYear = filterYear === 'All' || projectYear === filterYear;
+        return matchesSearch && matchesStatus && matchesLocation && matchesYear;
     });
 
     result.sort((a, b) => {
@@ -528,7 +536,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     });
 
     return result;
-  }, [projects, searchQuery, filterStatus, filterLocation, sortBy]);
+  }, [projects, searchQuery, filterStatus, filterLocation, filterYear, sortBy]);
 
   const createModal = isCreateModalOpen && (
       <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
@@ -1692,6 +1700,18 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
            </select>
         </div>
         <div className="flex items-center gap-2 px-6 py-2 bg-slate-50 border-none rounded-2xl">
+           <Calendar size={18} className="text-slate-400" />
+           <select 
+             className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer pr-4"
+             value={filterYear}
+             onChange={(e) => setFilterYear(e.target.value)}
+           >
+              {uniqueYears.map(year => (
+                <option key={year} value={year}>{year === 'All' ? 'All Years' : year}</option>
+              ))}
+           </select>
+        </div>
+        <div className="flex items-center gap-2 px-6 py-2 bg-slate-50 border-none rounded-2xl">
            <MapPin size={18} className="text-slate-400" />
            <select 
              className="bg-transparent text-xs font-black uppercase tracking-widest text-slate-600 outline-none cursor-pointer pr-4"
@@ -1716,12 +1736,13 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
               <option value="Progress">Sort by Progress</option>
            </select>
         </div>
-        {(searchQuery || filterStatus !== 'All' || filterLocation !== 'All' || sortBy !== 'Name') && (
+        {(searchQuery || filterStatus !== 'All' || filterLocation !== 'All' || filterYear !== 'All' || sortBy !== 'Name') && (
           <button 
             onClick={() => {
               setSearchQuery('');
               setFilterStatus('All');
               setFilterLocation('All');
+              setFilterYear('All');
               setSortBy('Name');
             }}
             className="flex items-center gap-2 px-6 py-2 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all"

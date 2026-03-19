@@ -72,6 +72,13 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
     content: ''
   });
 
+  const [isRecordDataModalOpen, setIsRecordDataModalOpen] = useState(false);
+  const [recordingIndicatorId, setRecordingIndicatorId] = useState<string | null>(null);
+  const [recordDataForm, setRecordDataForm] = useState<{period: string, actual: number}>({
+    period: new Date().getFullYear().toString(),
+    actual: 0
+  });
+
   const handleSaveNarrative = () => {
     if (!onUpdateProject) return;
     onUpdateProject({
@@ -140,6 +147,46 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
     
     setIsDocumentModalOpen(false);
     setDocumentForm({ name: '', category: 'Report', content: '' });
+  };
+
+  const handleOpenRecordDataModal = (indicatorId: string) => {
+    setRecordingIndicatorId(indicatorId);
+    setRecordDataForm({
+      period: new Date().getFullYear().toString(),
+      actual: 0
+    });
+    setIsRecordDataModalOpen(true);
+  };
+
+  const handleSaveRecordData = () => {
+    if (!onUpdateProject || !recordingIndicatorId || !recordDataForm.period) return;
+
+    const updatedIndicators = (project.indicators || []).map(ind => {
+      if (ind.id === recordingIndicatorId) {
+        const newPeriodicData = [...(ind.periodicData || []), {
+          period: recordDataForm.period,
+          target: Number(ind.overallTarget),
+          actual: Number(recordDataForm.actual)
+        }];
+        
+        const totalAchieved = newPeriodicData.reduce((sum, data) => sum + data.actual, 0);
+
+        return {
+          ...ind,
+          periodicData: newPeriodicData,
+          achieved: totalAchieved
+        };
+      }
+      return ind;
+    });
+
+    onUpdateProject({
+      ...project,
+      indicators: updatedIndicators
+    });
+
+    setIsRecordDataModalOpen(false);
+    setRecordingIndicatorId(null);
   };
 
   const handleDeleteDocument = (id: string) => {
@@ -1450,11 +1497,13 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Indicators</th>
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Baseline Data</th>
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Targets</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Achieved</th>
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Data Sources</th>
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Data Collection Methods</th>
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Frequency</th>
                       <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Responsibility</th>
-                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-tr-xl">Timeline/Years</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Timeline/Years</th>
+                      <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-tr-xl">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1475,11 +1524,20 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                         <td className="p-3 text-xs font-bold text-slate-900">{indicator.name}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.baseline} {indicator.unit}</td>
                         <td className="p-3 text-xs font-bold text-indigo-600">{indicator.overallTarget} {indicator.unit}</td>
+                        <td className="p-3 text-xs font-bold text-emerald-600">{indicator.achieved || 0} {indicator.unit}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.dataSource || '-'}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.dataCollectionMethod || '-'}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.frequency}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.responsible}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.timeline || '-'}</td>
+                        <td className="p-3 text-xs">
+                          <button 
+                            onClick={() => handleOpenRecordDataModal(indicator.id)}
+                            className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold"
+                          >
+                            <Plus size={14} /> Record Data
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -2147,6 +2205,50 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                 className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
               >
                 Create Link
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isRecordDataModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-300">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Record Indicator Data</h3>
+              <button onClick={() => setIsRecordDataModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Period (e.g., Year, Q1 2025)</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                  placeholder="e.g., 2025"
+                  value={recordDataForm.period} 
+                  onChange={e => setRecordDataForm({...recordDataForm, period: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Actual Value</label>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                  placeholder="0"
+                  value={recordDataForm.actual || ''} 
+                  onChange={e => setRecordDataForm({...recordDataForm, actual: Number(e.target.value)})} 
+                />
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveRecordData} 
+                disabled={!recordDataForm.period || recordDataForm.actual === 0}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Save Data
               </button>
             </div>
           </div>
