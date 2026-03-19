@@ -44,7 +44,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [viewMode, setViewMode] = useState<'LIST' | 'WORKSPACE' | 'DETAIL'>('LIST');
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
-  const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD'>('LIST');
+  const [activityViewMode, setActivityViewMode] = useState<'LIST' | 'BOARD' | 'GANTT'>('LIST');
   const kanbanColumns = ['Not Started', 'In Progress', 'Completed', 'Delayed', 'Cancelled'];
   
   // Modal states
@@ -951,6 +951,9 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                     <button onClick={() => setActivityViewMode('LIST')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activityViewMode === 'LIST' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                        <ListTodo size={14}/> List View
                                     </button>
+                                    <button onClick={() => setActivityViewMode('GANTT')} className={`px-4 py-2 rounded-lg flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activityViewMode === 'GANTT' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                       <GanttChartSquare size={14}/> Gantt View
+                                    </button>
                                  </div>
                                  <button onClick={() => handleOpenActivityModal()} className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-lg hover:bg-indigo-700 transition-all flex items-center gap-2">
                                     <Plus size={18}/> Deploy Task
@@ -1003,7 +1006,7 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                        </tbody>
                                    </table>
                                </div>
-                           ) : (
+                           ) : activityViewMode === 'BOARD' ? (
                                <div className="flex gap-6 overflow-x-auto pb-4 custom-scrollbar">
                                    {kanbanColumns.map(column => {
                                        const columnActivities = activeProject.activities?.filter(a => a.status === column) || [];
@@ -1064,7 +1067,106 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                        );
                                    })}
                                </div>
-                           )}
+                           ) : activityViewMode === 'GANTT' ? (
+                               <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden p-8">
+                                   <div className="overflow-x-auto custom-scrollbar pb-6">
+                                       <div className="min-w-[800px]">
+                                           {(() => {
+                                               const activities = activeProject.activities || [];
+                                               if (activities.length === 0) {
+                                                   return <div className="py-24 text-center text-slate-300 font-bold uppercase text-[10px] tracking-[0.2em]">No activities scheduled in work plan</div>;
+                                               }
+                                               
+                                               const dates = activities.flatMap(a => {
+                                                   const s = new Date(a.startDate).getTime();
+                                                   const e = new Date(a.endDate).getTime();
+                                                   return isNaN(s) || isNaN(e) ? [] : [s, e];
+                                               });
+                                               
+                                               if (dates.length === 0) {
+                                                   return <div className="py-24 text-center text-slate-300 font-bold uppercase text-[10px] tracking-[0.2em]">Invalid activity dates</div>;
+                                               }
+
+                                               const minDate = new Date(Math.min(...dates));
+                                               const maxDate = new Date(Math.max(...dates));
+                                               
+                                               minDate.setDate(minDate.getDate() - 7);
+                                               maxDate.setDate(maxDate.getDate() + 7);
+                                               
+                                               const totalDays = Math.max(1, Math.ceil((maxDate.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24)));
+                                               
+                                               const months: { label: string, days: number }[] = [];
+                                               let current = new Date(minDate);
+                                               while (current <= maxDate) {
+                                                   const month = current.toLocaleString('default', { month: 'short', year: 'numeric' });
+                                                   const daysInMonth = new Date(current.getFullYear(), current.getMonth() + 1, 0).getDate();
+                                                   const daysRemainingInMonth = daysInMonth - current.getDate() + 1;
+                                                   
+                                                   const daysToCount = Math.min(
+                                                       daysRemainingInMonth,
+                                                       Math.ceil((maxDate.getTime() - current.getTime()) / (1000 * 60 * 60 * 24)) + 1
+                                                   );
+                                                   
+                                                   months.push({ label: month, days: daysToCount });
+                                                   current = new Date(current.getFullYear(), current.getMonth() + 1, 1);
+                                               }
+
+                                               return (
+                                                   <div className="relative">
+                                                       <div className="flex border-b border-slate-200 mb-4">
+                                                           <div className="w-64 shrink-0 py-2 px-4 font-black text-[10px] text-slate-400 uppercase tracking-widest border-r border-slate-200">
+                                                               Activity
+                                                           </div>
+                                                           <div className="flex-1 flex">
+                                                               {months.map((m, i) => (
+                                                                   <div key={i} className="py-2 text-center font-black text-[10px] text-slate-400 uppercase tracking-widest border-r border-slate-100 last:border-r-0" style={{ width: `${(m.days / totalDays) * 100}%` }}>
+                                                                       {m.label}
+                                                                   </div>
+                                                               ))}
+                                                           </div>
+                                                       </div>
+                                                       
+                                                       <div className="space-y-3">
+                                                           {activities.map(act => {
+                                                               const start = new Date(act.startDate);
+                                                               const end = new Date(act.endDate);
+                                                               if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+                                                               
+                                                               const leftPercent = ((start.getTime() - minDate.getTime()) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+                                                               const widthPercent = ((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24) / totalDays) * 100;
+                                                               
+                                                               return (
+                                                                   <div key={act.id} className="flex items-center group cursor-pointer" onClick={() => handleOpenActivityModal(act)}>
+                                                                       <div className="w-64 shrink-0 pr-4 border-r border-slate-200 py-1">
+                                                                           <div className="text-xs font-bold text-slate-900 truncate" title={act.name}>{act.name}</div>
+                                                                           <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate">{act.assignedTo || 'Unassigned'}</div>
+                                                                       </div>
+                                                                       <div className="flex-1 relative h-8 bg-slate-50 rounded-r-lg group-hover:bg-slate-100 transition-colors">
+                                                                           <div className="absolute inset-0 flex">
+                                                                               {months.map((m, i) => (
+                                                                                   <div key={i} className="h-full border-r border-slate-200/50 last:border-r-0" style={{ width: `${(m.days / totalDays) * 100}%` }}></div>
+                                                                               ))}
+                                                                           </div>
+                                                                           
+                                                                           <div 
+                                                                               className={`absolute top-1.5 bottom-1.5 rounded-md shadow-sm flex items-center px-2 overflow-hidden ${act.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
+                                                                               style={{ left: `${Math.max(0, leftPercent)}%`, width: `${Math.max(1, widthPercent)}%` }}
+                                                                           >
+                                                                               <div className="absolute inset-0 bg-black/20" style={{ width: `${act.completionPercentage}%` }}></div>
+                                                                               <span className="relative text-[8px] font-black text-white mix-blend-overlay z-10">{act.completionPercentage}%</span>
+                                                                           </div>
+                                                                       </div>
+                                                                   </div>
+                                                               );
+                                                           })}
+                                                       </div>
+                                                   </div>
+                                               );
+                                           })()}
+                                       </div>
+                                   </div>
+                               </div>
+                           ) : null}
                         </div>
                     )}
 
