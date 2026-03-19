@@ -50,6 +50,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [draggedFieldIndex, setDraggedFieldIndex] = useState<number | null>(null);
 
   // --- Form Builder Helpers ---
   const addFormField = () => {
@@ -1297,16 +1298,54 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
                            <div className="space-y-4">
                               {editingItem.fields.map((field: FormFieldDefinition, idx: number) => (
-                                 <div key={field.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-8 group/field hover:border-indigo-300 transition-all relative overflow-hidden">
+                                 <div 
+                                    key={field.id} 
+                                    draggable
+                                    onDragStart={(e) => {
+                                       setDraggedFieldIndex(idx);
+                                       e.dataTransfer.effectAllowed = 'move';
+                                    }}
+                                    onDragOver={(e) => {
+                                       e.preventDefault();
+                                       e.dataTransfer.dropEffect = 'move';
+                                    }}
+                                    onDrop={(e) => {
+                                       e.preventDefault();
+                                       if (draggedFieldIndex === null || draggedFieldIndex === idx) return;
+                                       const fields = [...editingItem.fields];
+                                       const draggedField = fields[draggedFieldIndex];
+                                       fields.splice(draggedFieldIndex, 1);
+                                       fields.splice(idx, 0, draggedField);
+                                       setEditingItem({ ...editingItem, fields });
+                                       setDraggedFieldIndex(null);
+                                    }}
+                                    onDragEnd={() => setDraggedFieldIndex(null)}
+                                    className={`bg-white rounded-3xl border ${draggedFieldIndex === idx ? 'border-indigo-500 shadow-md opacity-50' : 'border-slate-200 shadow-sm'} p-8 group/field hover:border-indigo-300 transition-all relative overflow-hidden`}
+                                 >
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 opacity-0 group-hover/field:opacity-100 transition-opacity"></div>
                                     
                                     <div className="flex flex-col md:flex-row gap-8">
                                        <div className="flex flex-col gap-2 shrink-0 md:border-r md:border-slate-100 md:pr-8">
                                           <div className="flex items-center gap-2 mb-4">
+                                             <div className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-indigo-500 transition-colors">
+                                                <GripVertical size={20} />
+                                             </div>
                                              <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-black text-xs">{idx + 1}</div>
                                              <div className="flex items-center bg-slate-50 p-1 rounded-lg">
-                                                <button onClick={() => moveFormField(idx, 'up')} className="p-1 text-slate-400 hover:text-indigo-600"><ChevronUp size={14}/></button>
-                                                <button onClick={() => moveFormField(idx, 'down')} className="p-1 text-slate-400 hover:text-indigo-600"><ChevronDown size={14}/></button>
+                                                <button 
+                                                   onClick={() => moveFormField(idx, 'up')} 
+                                                   disabled={idx === 0}
+                                                   className={`p-1 ${idx === 0 ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-600'}`}
+                                                >
+                                                   <ChevronUp size={14}/>
+                                                </button>
+                                                <button 
+                                                   onClick={() => moveFormField(idx, 'down')} 
+                                                   disabled={idx === editingItem.fields.length - 1}
+                                                   className={`p-1 ${idx === editingItem.fields.length - 1 ? 'text-slate-200 cursor-not-allowed' : 'text-slate-400 hover:text-indigo-600'}`}
+                                                >
+                                                   <ChevronDown size={14}/>
+                                                </button>
                                              </div>
                                           </div>
                                           <select 
