@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Menu, X, Check, Smartphone, BarChart2, FileText, Shield, Globe, Zap, ChevronRight, Database, Users, Activity, Server } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -102,45 +101,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
         <div className="absolute inset-0 -z-10">
            <div className="absolute inset-0 bg-[radial-gradient(#e0e7ff_1px,transparent_1px)] [background-size:16px_16px] opacity-50"></div>
         </div>
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
+        <div 
           className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center"
         >
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
+          <div 
             className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-8"
           >
             <span className="flex h-2 w-2 rounded-full bg-indigo-600"></span>
             <span className="text-sm font-medium text-indigo-800">🚀 Trusted by 500+ Organizations in Rwanda</span>
-          </motion.div>
+          </div>
           
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8 }}
+          <h1 
             className="text-5xl md:text-7xl font-bold tracking-tight text-slate-900 mb-8 max-w-4xl mx-auto"
           >
             Complete Data & <br/>
             <span className="text-indigo-600">Project Management</span> Platform
-          </motion.h1>
+          </h1>
           
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.8 }}
+          <p 
             className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed"
           >
             From AI-powered surveys to comprehensive project management. Streamline your data collection, monitoring & evaluation, and organizational performance - all in one intelligent platform.
-          </motion.p>
+          </p>
           
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.8 }}
+          <div 
             className="flex flex-col sm:flex-row justify-center gap-4"
           >
             <button onClick={onRegister} className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-all shadow-lg hover:shadow-indigo-200">
@@ -152,8 +136,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               </div>
               Watch Demo
             </button>
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </header>
 
       {/* System Capacity Animated Slides */}
@@ -166,13 +150,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
           </div>
           
           <div className="relative h-80 max-w-4xl mx-auto">
-            <AnimatePresence mode="wait">
-              <motion.div
+              <div
                 key={currentSlide}
-                initial={{ opacity: 0, x: 100 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
                 className="absolute inset-0 flex flex-col items-center justify-center text-center bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-3xl p-8 shadow-2xl"
               >
                 {capacitySlides[currentSlide].icon}
@@ -185,8 +164,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 <p className="text-slate-400 max-w-lg mx-auto">
                   {capacitySlides[currentSlide].description}
                 </p>
-              </motion.div>
-            </AnimatePresence>
+              </div>
           </div>
           
           <div className="flex justify-center gap-3 mt-8">
@@ -276,16 +254,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
       {/* Features Grid */}
       <section id="features" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
+          <div 
             className="text-center mb-16"
           >
             <h2 className="text-3xl font-bold text-slate-900 mb-4">Everything You Need</h2>
             <p className="text-slate-600 max-w-2xl mx-auto">Comprehensive tools for survey creation, data management, and analytics designed for the modern NGO.</p>
-          </motion.div>
+          </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
@@ -320,12 +294,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 desc: "Field researchers can collect data anywhere without internet. Auto-sync when connection is restored."
               }
             ].map((feature, idx) => (
-              <motion.div 
+              <div 
                 key={idx} 
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.1 }}
                 className="p-6 rounded-xl bg-slate-50 hover:bg-indigo-50/50 transition-colors"
               >
                 <div className="mb-4 h-10 w-10 bg-white rounded-lg shadow-sm flex items-center justify-center border border-slate-100">
@@ -333,7 +303,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 </div>
                 <h3 className="font-bold text-slate-900 mb-2">{feature.title}</h3>
                 <p className="text-sm text-slate-600 leading-relaxed">{feature.desc}</p>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
