@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Project, BudgetLine, ActivityLogEntry, ProjectActivity, Beneficiary, ProjectIndicator, IndicatorTarget, LogframeElement, Survey, VirtualTable } from '../types';
+import { Project, BudgetLine, ActivityLogEntry, ProjectActivity, Beneficiary, ProjectIndicator, IndicatorTarget, LogframeElement, Survey, VirtualTable, ProjectRisk } from '../types';
 import ProjectDetailView from './ProjectDetailView';
 import { 
   FolderKanban, Plus, Search, Filter, MoreVertical, 
@@ -9,11 +9,11 @@ import {
   Pencil, AlertTriangle, CheckSquare, Clock, Link as LinkIcon, Check,
   UserPlus, UserCheck, GraduationCap, Home, Archive, Copy, AlertOctagon, Download, MapPin, Loader2, User,
   Trophy, ClipboardCheck, BarChart3, ChevronDown, Layers, Link2, Info, TrendingUp, Briefcase, ExternalLink,
-  ShieldCheck, Zap, LineChart, Network, GitGraph, BookOpen, TreePalm, GitBranch, HardDrive, Folder, UploadCloud,
+  ShieldCheck, Zap, Network, GitGraph, BookOpen, TreePalm, GitBranch, HardDrive, Folder, UploadCloud,
   GanttChartSquare, ClipboardList, TabletSmartphone, PieChart as PieChartIcon, Binary, LayoutGrid, ListTodo, Sparkles, Shield,
-  ArrowLeftRight, Settings2, Lightbulb, Clipboard, Calculator, GitMerge, TreeDeciduous
+  ArrowLeftRight, Settings2, Lightbulb, Clipboard, Calculator, GitMerge, TreeDeciduous, ShieldAlert
 } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface ProjectsViewProps {
   initialProjects: Project[];
@@ -55,6 +55,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
   const [isLogframeModalOpen, setIsLogframeModalOpen] = useState(false);
   const [isIndicatorModalOpen, setIsIndicatorModalOpen] = useState(false);
   const [editingIndicatorId, setEditingIndicatorId] = useState<string | null>(null);
+  const [isResourceModalOpen, setIsResourceModalOpen] = useState(false);
+  const [editingResourceId, setEditingResourceId] = useState<string | null>(null);
+  const [isRiskModalOpen, setIsRiskModalOpen] = useState(false);
+  const [editingRiskId, setEditingRiskId] = useState<string | null>(null);
   const [isPostCreatePromptOpen, setIsPostCreatePromptOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -76,6 +80,25 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     baseline: 0,
     dataSource: '',
     responsible: ''
+  });
+
+  const [resourceForm, setResourceForm] = useState<Partial<BudgetLine>>({
+    code: '',
+    description: '',
+    category: 'Personnel',
+    allocated: 0,
+    spent: 0,
+    variance: 0
+  });
+
+  const [riskForm, setRiskForm] = useState<Partial<ProjectRisk>>({
+    description: '',
+    category: 'Operational',
+    probability: 'Medium',
+    impact: 'Medium',
+    mitigationStrategy: '',
+    status: 'Open',
+    owner: ''
   });
 
   // Planning states
@@ -442,6 +465,116 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
     onNotify("Indicator deleted successfully");
   };
 
+  const handleOpenResourceModal = (resource?: BudgetLine) => {
+    if (resource) {
+      setEditingResourceId(resource.id);
+      setResourceForm(resource);
+    } else {
+      setEditingResourceId(null);
+      setResourceForm({
+        code: '',
+        description: '',
+        category: 'Personnel',
+        allocated: 0,
+        spent: 0,
+        variance: 0
+      });
+    }
+    setIsResourceModalOpen(true);
+  };
+
+  const handleSaveResource = () => {
+    if (!activeProject) return;
+    setIsSaving(true);
+    
+    let updatedBudgetLines = [...(activeProject.budgetLines || [])];
+    if (editingResourceId) {
+      updatedBudgetLines = updatedBudgetLines.map(r => 
+        r.id === editingResourceId ? { ...r, ...resourceForm } as BudgetLine : r
+      );
+    } else {
+      const newResource: BudgetLine = {
+        id: 'res-' + Date.now(),
+        ...resourceForm as any
+      };
+      updatedBudgetLines.push(newResource);
+    }
+
+    const newSpent = updatedBudgetLines.reduce((sum, r) => sum + (r.spent || 0), 0);
+
+    const updatedProject = {
+      ...activeProject,
+      budgetLines: updatedBudgetLines,
+      spent: newSpent,
+      activityLog: [
+        { id: 'l-' + Date.now(), action: editingResourceId ? 'Resource Updated' : 'Resource Allocated', details: `Budget line ${resourceForm.code} ${editingResourceId ? 'modified' : 'added'}.`, timestamp: new Date().toISOString(), user: 'Admin' },
+        ...(activeProject.activityLog || [])
+      ]
+    };
+    
+    setTimeout(() => {
+      setActiveProject(updatedProject);
+      setProjects(projects.map(p => p.id === activeProject.id ? updatedProject : p));
+      setIsResourceModalOpen(false);
+      setIsSaving(false);
+      onNotify(editingResourceId ? "Resource updated successfully" : "Resource allocated successfully");
+    }, 500);
+  };
+
+  const handleOpenRiskModal = (risk?: ProjectRisk) => {
+    if (risk) {
+      setEditingRiskId(risk.id);
+      setRiskForm(risk);
+    } else {
+      setEditingRiskId(null);
+      setRiskForm({
+        description: '',
+        category: 'Operational',
+        probability: 'Medium',
+        impact: 'Medium',
+        mitigationStrategy: '',
+        status: 'Open',
+        owner: ''
+      });
+    }
+    setIsRiskModalOpen(true);
+  };
+
+  const handleSaveRisk = () => {
+    if (!activeProject) return;
+    setIsSaving(true);
+    
+    let updatedRisks = [...(activeProject.risks || [])];
+    if (editingRiskId) {
+      updatedRisks = updatedRisks.map(r => 
+        r.id === editingRiskId ? { ...r, ...riskForm } as ProjectRisk : r
+      );
+    } else {
+      const newRisk: ProjectRisk = {
+        id: 'risk-' + Date.now(),
+        ...riskForm as any
+      };
+      updatedRisks.push(newRisk);
+    }
+
+    const updatedProject = {
+      ...activeProject,
+      risks: updatedRisks,
+      activityLog: [
+        { id: 'l-' + Date.now(), action: editingRiskId ? 'Risk Updated' : 'Risk Logged', details: `Risk ${editingRiskId ? 'modified' : 'added'} in registry.`, timestamp: new Date().toISOString(), user: 'Admin' },
+        ...(activeProject.activityLog || [])
+      ]
+    };
+    
+    setTimeout(() => {
+      setActiveProject(updatedProject);
+      setProjects(projects.map(p => p.id === activeProject.id ? updatedProject : p));
+      setIsRiskModalOpen(false);
+      setIsSaving(false);
+      onNotify(editingRiskId ? "Risk updated successfully" : "Risk logged successfully");
+    }, 500);
+  };
+
   const handleUpdateSettings = () => {
     if (!activeProject) return;
     setIsSaving(true);
@@ -696,6 +829,10 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                     </div>
                 </div>
                 <div className="flex gap-2">
+                    <button onClick={() => openProjectDetail(activeProject)} className="bg-white border border-slate-200 text-slate-700 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm mr-2">
+                        <FileText size={16}/>
+                        View Details
+                    </button>
                     <button onClick={() => setIsCreateModalOpen(true)} className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-all shadow-lg mr-2">
                         <Plus size={16}/>
                         New Project
@@ -720,6 +857,8 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                     
                     <div className="mt-6 text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 mb-2">Planning & Execution</div>
                     <button onClick={() => setActiveTab('activities')} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'activities' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}><GanttChartSquare size={18} /> Detailed Work Plan</button>
+                    <button onClick={() => setActiveTab('resource_allocation')} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'resource_allocation' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}><DollarSign size={18} /> Resource Allocation</button>
+                    <button onClick={() => setActiveTab('risk_management')} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'risk_management' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}><ShieldAlert size={18} /> Risk Management</button>
                     <button onClick={() => setActiveTab('indicator_registry')} className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === 'indicator_registry' ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200' : 'text-slate-600 hover:bg-slate-100'}`}><Target size={18} /> Indicator Registry</button>
                     
                     <div className="mt-6 text-[10px] font-black text-slate-400 uppercase tracking-widest px-4 mb-2">Monitoring & Data</div>
@@ -931,6 +1070,82 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                        </div>
                                     </div>
                                  ))}
+                              </div>
+                           </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'resource_allocation' && (
+                        <div className="animate-fade-in space-y-8 max-w-6xl mx-auto pb-12">
+                           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                              <div>
+                                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">Resource Allocation</h3>
+                                 <p className="text-slate-500 font-medium">Budget and resource distribution across project components.</p>
+                              </div>
+                              <button onClick={() => handleOpenResourceModal()} className="bg-slate-900 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-indigo-600 transition-all shadow-xl">
+                                 <Plus size={16}/> Allocate Resource
+                              </button>
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-center items-center text-center">
+                                 <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
+                                    <DollarSign size={32} />
+                                 </div>
+                                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Total Budget</div>
+                                 <div className="text-4xl font-black text-slate-900">${(activeProject.budget || 0).toLocaleString()}</div>
+                              </div>
+                              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-center items-center text-center">
+                                 <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
+                                    <CheckCircle size={32} />
+                                 </div>
+                                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Allocated</div>
+                                 <div className="text-4xl font-black text-slate-900">${((activeProject.budgetLines || []).reduce((sum, r) => sum + (r.allocated || 0), 0)).toLocaleString()}</div>
+                              </div>
+                              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-center items-center text-center">
+                                 <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
+                                    <AlertTriangle size={32} />
+                                 </div>
+                                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Remaining</div>
+                                 <div className="text-4xl font-black text-slate-900">${((activeProject.budget || 0) - ((activeProject.budgetLines || []).reduce((sum, r) => sum + (r.allocated || 0), 0))).toLocaleString()}</div>
+                              </div>
+                           </div>
+
+                           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 overflow-hidden">
+                              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                                 <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                                    <PieChartIcon className="text-indigo-600" size={20}/>
+                                    Budget Breakdown
+                                 </h4>
+                              </div>
+                              <div className="p-6">
+                                 <div className="space-y-4">
+                                    {(activeProject.budgetLines || []).length === 0 ? (
+                                       <div className="text-center py-8 text-slate-500">No resources allocated yet.</div>
+                                    ) : (
+                                       (activeProject.budgetLines || []).map((item) => (
+                                          <div key={item.id} onClick={() => handleOpenResourceModal(item)} className="cursor-pointer flex items-center justify-between p-4 rounded-2xl border border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-colors">
+                                             <div className="flex items-center gap-4">
+                                                <div className="w-4 h-4 rounded-full bg-indigo-500"></div>
+                                                <div className="flex flex-col">
+                                                   <span className="font-bold text-slate-700">{item.code} - {item.category}</span>
+                                                   <span className="text-xs text-slate-500">{item.description}</span>
+                                                </div>
+                                             </div>
+                                             <div className="flex items-center gap-8">
+                                                <div className="text-right">
+                                                   <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Allocated</div>
+                                                   <div className="font-black text-slate-900">${(item.allocated || 0).toLocaleString()}</div>
+                                                </div>
+                                                <div className="text-right">
+                                                   <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">Spent</div>
+                                                   <div className="font-black text-slate-900">${(item.spent || 0).toLocaleString()}</div>
+                                                </div>
+                                             </div>
+                                          </div>
+                                       ))
+                                    )}
+                                 </div>
                               </div>
                            </div>
                         </div>
@@ -1167,6 +1382,95 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                                    </div>
                                </div>
                            ) : null}
+                        </div>
+                    )}
+
+                    {activeTab === 'risk_management' && (
+                        <div className="animate-fade-in space-y-8 max-w-6xl mx-auto pb-12">
+                           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+                              <div>
+                                 <h3 className="text-2xl font-black text-slate-900 tracking-tight">Risk Management</h3>
+                                 <p className="text-slate-500 font-medium">Identify, assess, and mitigate project risks.</p>
+                              </div>
+                              <button onClick={() => handleOpenRiskModal()} className="bg-slate-900 text-white px-6 py-3 rounded-xl text-xs font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:bg-indigo-600 transition-all shadow-xl">
+                                 <Plus size={16}/> Log New Risk
+                              </button>
+                           </div>
+
+                           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-center items-center text-center">
+                                 <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4">
+                                    <ShieldAlert size={32} />
+                                 </div>
+                                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">High Risks</div>
+                                 <div className="text-4xl font-black text-slate-900">
+                                    {activeProject.risks?.filter(r => r.probability === 'High' && r.impact === 'High').length || 0}
+                                 </div>
+                              </div>
+                              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-center items-center text-center">
+                                 <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center mb-4">
+                                    <AlertTriangle size={32} />
+                                 </div>
+                                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Medium Risks</div>
+                                 <div className="text-4xl font-black text-slate-900">
+                                    {activeProject.risks?.filter(r => (r.probability === 'Medium' || r.impact === 'Medium') && !(r.probability === 'High' && r.impact === 'High')).length || 0}
+                                 </div>
+                              </div>
+                              <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 flex flex-col justify-center items-center text-center">
+                                 <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4">
+                                    <ShieldCheck size={32} />
+                                 </div>
+                                 <div className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-1">Mitigated</div>
+                                 <div className="text-4xl font-black text-slate-900">
+                                    {activeProject.risks?.filter(r => r.status === 'Mitigated').length || 0}
+                                 </div>
+                              </div>
+                           </div>
+
+                           <div className="bg-white rounded-[2rem] border border-slate-200 shadow-xl shadow-slate-100/50 overflow-hidden">
+                              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                                 <h4 className="text-lg font-bold text-slate-900">Risk Register</h4>
+                              </div>
+                              <div className="p-0">
+                                 {activeProject.risks && activeProject.risks.length > 0 ? (
+                                    <div className="divide-y divide-slate-100">
+                                       {activeProject.risks.map((risk) => (
+                                          <div key={risk.id} onClick={() => handleOpenRiskModal(risk)} className="p-6 hover:bg-slate-50 transition-colors cursor-pointer">
+                                             <div className="flex justify-between items-start mb-2">
+                                                <h5 className="font-bold text-slate-900">{risk.category} Risk</h5>
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                                                   risk.status === 'Open' ? 'bg-amber-100 text-amber-700' :
+                                                   risk.status === 'Mitigated' ? 'bg-emerald-100 text-emerald-700' :
+                                                   'bg-slate-100 text-slate-700'
+                                                }`}>
+                                                   {risk.status}
+                                                </span>
+                                             </div>
+                                             <p className="text-sm text-slate-600 mb-4">{risk.description}</p>
+                                             <div className="flex gap-4 text-xs font-bold text-slate-500">
+                                                <div className="flex items-center gap-1">
+                                                   <span className="uppercase tracking-widest">Prob:</span>
+                                                   <span className={`${risk.probability === 'High' ? 'text-rose-600' : risk.probability === 'Medium' ? 'text-amber-600' : 'text-emerald-600'}`}>{risk.probability}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                   <span className="uppercase tracking-widest">Impact:</span>
+                                                   <span className={`${risk.impact === 'High' ? 'text-rose-600' : risk.impact === 'Medium' ? 'text-amber-600' : 'text-emerald-600'}`}>{risk.impact}</span>
+                                                </div>
+                                             </div>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 ) : (
+                                    <div className="p-12 text-center">
+                                       <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4">
+                                          <Shield size={32} />
+                                       </div>
+                                       <h4 className="text-lg font-bold text-slate-900 mb-2">No Risks Logged</h4>
+                                       <p className="text-slate-500 max-w-md mx-auto">Maintain a proactive stance by logging potential project risks and mitigation strategies here.</p>
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
                         </div>
                     )}
 
@@ -1759,6 +2063,115 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
                </div>
             )}
+
+            {isResourceModalOpen && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
+                  <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
+                     <div className="p-8 bg-indigo-600 text-white flex justify-between items-center">
+                        <h3 className="text-2xl font-black tracking-tight">{editingResourceId ? 'Update Resource' : 'Allocate Resource'}</h3>
+                        <button onClick={() => setIsResourceModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+                     </div>
+                     <div className="p-8 space-y-6">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                            <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={resourceForm.category} onChange={e => setResourceForm({...resourceForm, category: e.target.value as any})}>
+                                <option value="Personnel">Personnel</option>
+                                <option value="Operational">Operational</option>
+                                <option value="Equipment">Equipment</option>
+                                <option value="Travel">Travel</option>
+                                <option value="Sub-grants">Sub-grants</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
+                            <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="e.g., Field Officer Salary" value={resourceForm.description} onChange={e => setResourceForm({...resourceForm, description: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Allocated Amount ($)</label>
+                                <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="0" value={resourceForm.allocated || 0} onChange={e => setResourceForm({...resourceForm, allocated: Number(e.target.value)})} />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Spent Amount ($)</label>
+                                <input type="number" className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="0" value={resourceForm.spent || 0} onChange={e => setResourceForm({...resourceForm, spent: Number(e.target.value)})} />
+                            </div>
+                        </div>
+                     </div>
+                     <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
+                        <button onClick={handleSaveResource} className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl">
+                            {editingResourceId ? 'Update Resource' : 'Save Resource'}
+                         </button>
+                     </div>
+                  </div>
+               </div>
+            )}
+
+            {isRiskModalOpen && (
+               <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-md bg-slate-900/60">
+                  <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-scale-in">
+                     <div className="p-8 bg-indigo-600 text-white flex justify-between items-center">
+                        <h3 className="text-2xl font-black tracking-tight">{editingRiskId ? 'Update Risk' : 'Log New Risk'}</h3>
+                        <button onClick={() => setIsRiskModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors text-white"><X size={28} /></button>
+                     </div>
+                     <div className="p-8 space-y-6">
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Risk Description</label>
+                            <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" placeholder="e.g., Supply chain delays" value={riskForm.description} onChange={e => setRiskForm({...riskForm, description: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Category</label>
+                                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={riskForm.category} onChange={e => setRiskForm({...riskForm, category: e.target.value as any})}>
+                                    <option value="Operational">Operational</option>
+                                    <option value="Financial">Financial</option>
+                                    <option value="Strategic">Strategic</option>
+                                    <option value="Compliance">Compliance</option>
+                                    <option value="Reputational">Reputational</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Probability</label>
+                                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={riskForm.probability} onChange={e => setRiskForm({...riskForm, probability: e.target.value as any})}>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Impact</label>
+                                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={riskForm.impact} onChange={e => setRiskForm({...riskForm, impact: e.target.value as any})}>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                                <select className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold" value={riskForm.status} onChange={e => setRiskForm({...riskForm, status: e.target.value as any})}>
+                                    <option value="Open">Open</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Mitigated">Mitigated</option>
+                                    <option value="Realized">Realized</option>
+                                    <option value="Closed">Closed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Mitigation Strategy</label>
+                            <textarea className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none font-bold min-h-[100px]" placeholder="How will this risk be managed?" value={riskForm.mitigationStrategy} onChange={e => setRiskForm({...riskForm, mitigationStrategy: e.target.value})} />
+                        </div>
+                     </div>
+                     <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50">
+                        <button onClick={handleSaveRisk} className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl">
+                            {editingRiskId ? 'Update Risk' : 'Log Risk'}
+                         </button>
+                     </div>
+                  </div>
+               </div>
+            )}
         </div>
       );
   }
@@ -1854,9 +2267,79 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
         )}
       </div>
 
+      {/* M&E Trends Visualization */}
+      <div className="mb-12 bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+            <TrendingUp size={24} />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-900">M&E Trends Overview</h2>
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">Portfolio Performance Metrics</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Beneficiary Reach Growth */}
+          <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+            <h3 className="text-sm font-black text-slate-900 mb-6 flex items-center gap-2">
+              <Users size={16} className="text-indigo-600" /> Beneficiary Reach Growth (MoM)
+            </h3>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={[
+                  { month: 'Jan', reach: 1200 },
+                  { month: 'Feb', reach: 1900 },
+                  { month: 'Mar', reach: 2400 },
+                  { month: 'Apr', reach: 3100 },
+                  { month: 'May', reach: 4500 },
+                  { month: 'Jun', reach: 5200 },
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }} dx={-10} />
+                  <Tooltip 
+                    cursor={{ fill: '#f1f5f9' }}
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar dataKey="reach" fill="#4f46e5" radius={[4, 4, 0, 0]} barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Quality Impact Score Trend */}
+          <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+            <h3 className="text-sm font-black text-slate-900 mb-6 flex items-center gap-2">
+              <Target size={16} className="text-emerald-600" /> Quality Impact Score Trend
+            </h3>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={[
+                  { month: 'Jan', score: 72 },
+                  { month: 'Feb', score: 75 },
+                  { month: 'Mar', score: 78 },
+                  { month: 'Apr', score: 81 },
+                  { month: 'May', score: 85 },
+                  { month: 'Jun', score: 88 },
+                ]}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }} dy={10} />
+                  <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 700 }} dx={-10} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Line type="monotone" dataKey="score" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
         {filteredProjects.map(project => (
-          <div key={project.id} onClick={() => openProjectDetail(project)} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group cursor-pointer relative overflow-hidden flex flex-col h-full">
+          <div key={project.id} onClick={() => openWorkspace(project)} className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:border-indigo-100 transition-all group cursor-pointer relative overflow-hidden flex flex-col h-full">
             <div className="p-8 flex-1">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">

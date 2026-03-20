@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Project, ProjectActivity, ProjectPartner, ProjectRisk } from '../types';
+import { Project, ProjectActivity, ProjectPartner, ProjectRisk, ProjectMilestone } from '../types';
 import { 
   ArrowLeft, FolderKanban, Calendar, Users, DollarSign, 
   MapPin, CheckCircle, Target, Activity, Clock, User,
   List, LayoutGrid, AlertTriangle, CheckSquare, X,
   PieChart as PieChartIcon, LineChart, Plus, Edit2, Trash2,
-  FileText, Upload, Sparkles, Loader2, Network, Link
+  FileText, Upload, Sparkles, Loader2, Network, Link,
+  Flag, CheckCircle2, Circle
 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { GoogleGenAI } from "@google/genai";
@@ -78,6 +79,64 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
     period: new Date().getFullYear().toString(),
     actual: 0
   });
+
+  const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
+  const [milestoneForm, setMilestoneForm] = useState<Partial<ProjectMilestone>>({
+    name: '',
+    dueDate: new Date().toISOString().split('T')[0],
+    status: 'Not Started'
+  });
+
+  const handleOpenMilestoneModal = (milestone?: ProjectMilestone) => {
+    if (milestone) {
+      setEditingMilestoneId(milestone.id);
+      setMilestoneForm(milestone);
+    } else {
+      setEditingMilestoneId(null);
+      setMilestoneForm({
+        name: '',
+        dueDate: new Date().toISOString().split('T')[0],
+        status: 'Not Started'
+      });
+    }
+    setIsMilestoneModalOpen(true);
+  };
+
+  const handleSaveMilestone = () => {
+    if (!onUpdateProject || !milestoneForm.name || !milestoneForm.dueDate) return;
+    
+    const newMilestone: ProjectMilestone = {
+      id: editingMilestoneId || `ms-${Date.now()}`,
+      name: milestoneForm.name,
+      dueDate: milestoneForm.dueDate,
+      status: milestoneForm.status as any,
+      completionDate: milestoneForm.status === 'Completed' ? new Date().toISOString().split('T')[0] : undefined
+    };
+
+    let updatedMilestones;
+    if (editingMilestoneId) {
+      updatedMilestones = (project.milestones || []).map(m => m.id === editingMilestoneId ? newMilestone : m);
+    } else {
+      updatedMilestones = [...(project.milestones || []), newMilestone];
+    }
+
+    onUpdateProject({
+      ...project,
+      milestones: updatedMilestones
+    });
+    setIsMilestoneModalOpen(false);
+  };
+
+  const handleDeleteMilestone = (id: string) => {
+    if (!onUpdateProject) return;
+    if (confirm("Are you sure you want to remove this milestone?")) {
+      onUpdateProject({
+        ...project,
+        milestones: (project.milestones || []).filter(m => m.id !== id)
+      });
+    }
+  };
 
   const handleSaveNarrative = () => {
     if (!onUpdateProject) return;
@@ -1437,6 +1496,71 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
             ) : null}
           </div>
 
+          {/* Milestones Section */}
+          <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
+            <div className="flex justify-between items-center mb-6">
+              <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <Flag className="text-indigo-600" size={20} /> Project Milestones
+              </h4>
+              <button 
+                onClick={() => handleOpenMilestoneModal()}
+                className="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 hover:bg-indigo-100 transition-all">
+                <Plus size={14} /> Add Milestone
+              </button>
+            </div>
+            
+            {project.milestones && project.milestones.length > 0 ? (
+              <div className="space-y-4">
+                {project.milestones.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()).map(milestone => (
+                  <div key={milestone.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        milestone.status === 'Completed' ? 'bg-emerald-100 text-emerald-600' :
+                        milestone.status === 'In Progress' ? 'bg-indigo-100 text-indigo-600' :
+                        'bg-slate-200 text-slate-500'
+                      }`}>
+                        {milestone.status === 'Completed' ? <CheckCircle2 size={20} /> : 
+                         milestone.status === 'In Progress' ? <Clock size={20} /> : 
+                         <Circle size={20} />}
+                      </div>
+                      <div>
+                        <h5 className="font-bold text-slate-900">{milestone.name}</h5>
+                        <p className="text-xs text-slate-500 mt-1">Due: {new Date(milestone.dueDate).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        milestone.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
+                        milestone.status === 'In Progress' ? 'bg-indigo-100 text-indigo-700' :
+                        'bg-slate-200 text-slate-700'
+                      }`}>
+                        {milestone.status}
+                      </span>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleOpenMilestoneModal(milestone)} className="p-2 text-slate-400 hover:text-indigo-600 bg-white rounded-xl border border-slate-200 hover:border-indigo-200 transition-all">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteMilestone(milestone.id)} className="p-2 text-slate-400 hover:text-red-600 bg-white rounded-xl border border-slate-200 hover:border-red-200 transition-all">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 bg-slate-50 rounded-3xl border border-slate-100 border-dashed">
+                <Flag className="mx-auto text-slate-300 mb-4" size={32} />
+                <p className="text-slate-500 font-medium">No milestones defined yet.</p>
+                <button 
+                  onClick={() => handleOpenMilestoneModal()}
+                  className="mt-4 text-indigo-600 font-bold text-sm hover:underline">
+                  Add the first milestone
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* Interventions Section */}
           {project.interventions && project.interventions.length > 0 && (
             <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
@@ -2249,6 +2373,61 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                 className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
               >
                 Save Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isMilestoneModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-300">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">{editingMilestoneId ? 'Edit Milestone' : 'Add Milestone'}</h3>
+              <button onClick={() => setIsMilestoneModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Milestone Name</label>
+                <input 
+                  type="text" 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all"
+                  value={milestoneForm.name}
+                  onChange={e => setMilestoneForm({...milestoneForm, name: e.target.value})}
+                  placeholder="e.g., Phase 1 Completion"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Due Date</label>
+                <input 
+                  type="date" 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all"
+                  value={milestoneForm.dueDate}
+                  onChange={e => setMilestoneForm({...milestoneForm, dueDate: e.target.value})}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Status</label>
+                <select 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all"
+                  value={milestoneForm.status}
+                  onChange={e => setMilestoneForm({...milestoneForm, status: e.target.value as any})}
+                >
+                  <option value="Not Started">Not Started</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                </select>
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveMilestone} 
+                disabled={!milestoneForm.name || !milestoneForm.dueDate}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Save Milestone
               </button>
             </div>
           </div>
