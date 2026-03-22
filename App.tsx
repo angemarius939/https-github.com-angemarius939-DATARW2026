@@ -41,6 +41,7 @@ import SettingsView from './components/SettingsView';
 import AdminPanel from './components/AdminPanel';
 import CustomPageView from './components/CustomPageView';
 import RegisterView from './components/RegisterView';
+import LoginView from './components/LoginView';
 import DataAnalysisView from './components/DataAnalysisView';
 import DatasetsView from './components/DatasetsView';
 import FieldAppView from './components/FieldAppView';
@@ -226,11 +227,36 @@ const App: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleRegisterSuccess = (org: string, user: string) => {
+  const handleRegisterSuccess = (org: string, userName: string, email: string) => {
     setOrganizationName(org);
-    setUserName(user);
+    setUserName(userName);
+    
+    // Create new user
+    const newUser: AppUser = {
+      id: `u${users.length + 1}`,
+      name: userName,
+      email: email,
+      role: 'Admin',
+      status: 'ACTIVE',
+      lastLogin: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      department: 'Management'
+    };
+    
+    setUsers([...users, newUser]);
+    setCurrentUserId(newUser.id);
+    
     setView(ViewState.DASHBOARD_HOME);
     notify(`Organization '${org}' established successfully.`);
+  };
+
+  const handleLoginSuccess = (userId: string) => {
+    const user = users.find(u => u.id === userId);
+    if (user) {
+      setCurrentUserId(userId);
+      setUserName(user.name);
+      setView(ViewState.DASHBOARD_HOME);
+      notify(`Welcome back, ${user.name}.`);
+    }
   };
 
   const handleLogout = () => {
@@ -255,7 +281,7 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    if (view === ViewState.LANDING || view === ViewState.REGISTER || view === ViewState.DASHBOARD_HOME) return;
+    if (view === ViewState.LANDING || view === ViewState.REGISTER || view === ViewState.LOGIN || view === ViewState.DASHBOARD_HOME) return;
     
     const viewToPermissionMap: Record<string, string> = {
       [ViewState.PROJECTS]: 'Projects',
@@ -285,7 +311,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
-      {view !== ViewState.LANDING && view !== ViewState.REGISTER && (
+      {view !== ViewState.LANDING && view !== ViewState.REGISTER && view !== ViewState.LOGIN && (
         <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform md:relative md:translate-x-0 flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="h-16 flex items-center px-6 border-b border-slate-800 shrink-0">
              <div className="bg-indigo-600 text-white p-1 rounded-md font-bold mr-2 text-sm">D</div>
@@ -388,7 +414,7 @@ const App: React.FC = () => {
       )}
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        {view !== ViewState.LANDING && view !== ViewState.REGISTER && (
+        {view !== ViewState.LANDING && view !== ViewState.REGISTER && view !== ViewState.LOGIN && (
           <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
              <div className="flex items-center gap-4">
                 <button className="md:hidden text-slate-500" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Layers size={20}/></button>
@@ -485,7 +511,8 @@ const App: React.FC = () => {
         )}
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-           {view === ViewState.LANDING && <LandingPage onLogin={() => setView(ViewState.DASHBOARD_HOME)} onRegister={() => setView(ViewState.REGISTER)} />}
+           {view === ViewState.LANDING && <LandingPage onLogin={() => setView(ViewState.LOGIN)} onRegister={() => setView(ViewState.REGISTER)} />}
+           {view === ViewState.LOGIN && <LoginView users={users} onLoginSuccess={handleLoginSuccess} onBack={() => setView(ViewState.LANDING)} onRegister={() => setView(ViewState.REGISTER)} />}
            {view === ViewState.REGISTER && <RegisterView onRegisterSuccess={handleRegisterSuccess} onBack={() => setView(ViewState.LANDING)} />}
            {view === ViewState.DASHBOARD_HOME && (
              <ProjectDashboard 

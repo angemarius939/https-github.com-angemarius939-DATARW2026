@@ -20,6 +20,7 @@ export interface AppUser {
 
 export enum ViewState {
   LANDING = 'LANDING',
+  LOGIN = 'LOGIN',
   REGISTER = 'REGISTER',
   DASHBOARD_HOME = 'DASHBOARD_HOME',
   SURVEYS = 'SURVEYS',

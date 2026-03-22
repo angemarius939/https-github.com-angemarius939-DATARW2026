@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ArrowLeft, User, Mail, Lock, Building, CheckCircle, Loader2 } from 'lucide-react';
 
 interface RegisterViewProps {
-  onRegisterSuccess: (orgName: string, userName: string) => void;
+  onRegisterSuccess: (orgName: string, userName: string, email: string) => void;
   onBack: () => void;
 }
 
@@ -24,7 +24,7 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegisterSuccess, onBack }
     // Simulate API call and tenant registration
     setTimeout(() => {
       setIsLoading(false);
-      onRegisterSuccess(formData.organizationName, `${formData.firstName} ${formData.lastName}`);
+      onRegisterSuccess(formData.organizationName, `${formData.firstName} ${formData.lastName}`, formData.email);
     }, 1500);
   };
 
