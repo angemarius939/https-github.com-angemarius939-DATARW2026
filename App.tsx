@@ -52,7 +52,8 @@ import {
   Bell, Users, PieChart, ShieldAlert, UserPlus, 
   Layout, CheckCircle2, ChevronDown, Layers, Wrench,
   FolderOpen, BarChart3, Database, MessageSquare,
-  Edit3, Plus, Table as TableIcon, FilePlus, LineChart, Smartphone, BrainCircuit, Bot
+  Edit3, Plus, Table as TableIcon, FilePlus, LineChart, Smartphone, BrainCircuit, Bot,
+  Moon, Sun
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -137,6 +138,15 @@ const App: React.FC = () => {
 
   const [pageConfigs, setPageConfigs] = useState<PageConfigs>({});
   const [shouldTriggerProjectCreate, setShouldTriggerProjectCreate] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   const [globalDocuments, setGlobalDocuments] = useState<any[]>([
     { id: 1, name: 'Water_Project_Proposal_Final.pdf', type: 'PDF', category: 'Proposals', size: '2.4 MB', owner: 'Jean B.', date: '2024-03-10', content: 'Proposal for providing clean water to the Northern Province. Focus on borehole drilling and community training.' },
@@ -310,7 +320,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <div className={`flex h-screen bg-slate-50 text-slate-900 font-sans overflow-hidden dark:bg-slate-900 dark:text-slate-50`}>
       {view !== ViewState.LANDING && view !== ViewState.REGISTER && view !== ViewState.LOGIN && (
         <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform md:relative md:translate-x-0 flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="h-16 flex items-center px-6 border-b border-slate-800 shrink-0">
@@ -415,11 +425,11 @@ const App: React.FC = () => {
       
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {view !== ViewState.LANDING && view !== ViewState.REGISTER && view !== ViewState.LOGIN && (
-          <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0 z-40">
+          <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-6 shrink-0 z-40">
              <div className="flex items-center gap-4">
-                <button className="md:hidden text-slate-500" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Layers size={20}/></button>
+                <button className="md:hidden text-slate-500 dark:text-slate-400" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}><Layers size={20}/></button>
                 <div className="relative group">
-                  <button className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${activeProjectId ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
+                  <button className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${activeProjectId ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-800 dark:text-indigo-300' : 'bg-slate-50 border-slate-200 text-slate-600 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300'}`}>
                      <FolderKanban size={16} />
                      <span className="text-xs font-bold truncate max-w-[150px]">
                         {activeProjectId ? projects.find(p => p.id === activeProjectId)?.name : 'Portfolio View'}
@@ -461,12 +471,21 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {hasPermission('Admin Panel') && <div className="h-6 w-px bg-slate-200"></div>}
-                <button onClick={() => notify("New organizational update available")} className="p-2 text-slate-400 hover:text-indigo-600 relative">
-                   <Bell size={20} />
-                   <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                {hasPermission('Admin Panel') && <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>}
+                
+                <button 
+                  onClick={() => setIsDarkMode(!isDarkMode)} 
+                  className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 relative transition-colors"
+                  title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                 </button>
-                <div className="h-6 w-px bg-slate-200"></div>
+
+                <button onClick={() => notify("New organizational update available")} className="p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 relative">
+                   <Bell size={20} />
+                   <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
+                </button>
+                <div className="h-6 w-px bg-slate-200 dark:bg-slate-700"></div>
                 
                 <div className="relative group">
                   <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
@@ -613,6 +632,7 @@ const App: React.FC = () => {
            )}
            {view === ViewState.AI_GENERATOR && (
              <AIGeneratorView 
+               organizationName={organizationName}
                projects={projects}
                surveys={surveys}
                beneficiaries={beneficiaries}
