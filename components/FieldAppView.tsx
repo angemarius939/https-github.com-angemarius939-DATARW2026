@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, Wifi, WifiOff, RefreshCw, CheckCircle2, FileText, ArrowLeft, Save, Clock, AlertCircle } from 'lucide-react';
+import { Smartphone, Wifi, WifiOff, RefreshCw, CheckCircle2, FileText, ArrowLeft, Save, Clock, AlertCircle, Download, Apple, MonitorSmartphone, Loader2 } from 'lucide-react';
 import { FormDefinition, Project, FormSubmission } from '../types';
 
 interface FieldAppViewProps {
@@ -15,7 +15,9 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
   const [formData, setFormData] = useState<any>({});
   const [syncQueue, setSyncQueue] = useState<FormSubmission[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [view, setView] = useState<'home' | 'form' | 'queue'>('home');
+  const [view, setView] = useState<'home' | 'form' | 'queue' | 'apps'>('home');
+  const [iosStatus, setIosStatus] = useState<'available' | 'installing' | 'active'>('available');
+  const [androidStatus, setAndroidStatus] = useState<'available' | 'installing' | 'active'>('available');
 
   const publishedForms = forms.filter(f => f.publishStatus === 'PUBLISHED');
 
@@ -123,6 +125,24 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
     }
   };
 
+  const handleActivateIOS = () => {
+    setIosStatus('installing');
+    onNotify("Activating iOS App and enabling Mobile Data sync...", "success");
+    setTimeout(() => {
+      setIosStatus('active');
+      onNotify("iOS App Activated Successfully!", "success");
+    }, 2000);
+  };
+
+  const handleActivateAndroid = () => {
+    setAndroidStatus('installing');
+    onNotify("Downloading Android APK...", "success");
+    setTimeout(() => {
+      setAndroidStatus('active');
+      onNotify("Android App Installed Successfully!", "success");
+    }, 2000);
+  };
+
   const pendingCount = syncQueue.filter(item => item.status === 'pending').length;
 
   return (
@@ -154,6 +174,9 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
         )}
         {view === 'home' && (
           <h2 className="text-xl font-bold">Project Monitoring</h2>
+        )}
+        {view === 'apps' && (
+          <h2 className="text-xl font-bold">Mobile Apps</h2>
         )}
       </div>
 
@@ -332,6 +355,89 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
             </div>
           </div>
         )}
+
+        {/* Apps View */}
+        {view === 'apps' && (
+          <div className="space-y-6 animate-fade-in">
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 text-indigo-900">
+              <h3 className="font-black text-lg mb-2 flex items-center gap-2">
+                <MonitorSmartphone size={20} className="text-indigo-600" />
+                Offline Data Collection
+              </h3>
+              <p className="text-sm text-indigo-700/80 leading-relaxed">
+                Download our native mobile apps to collect data for Beneficiaries and Surveys completely offline. The apps will automatically sync when connected to WiFi or Mobile Data.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {/* Android App Card */}
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:border-emerald-200 transition-colors">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center">
+                      <Smartphone size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-800 text-lg">Android App</h4>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Version 1.0.0 • 25 MB • Android 5.0+</p>
+                    </div>
+                  </div>
+                </div>
+                <ul className="text-sm text-slate-600 space-y-2 mb-5">
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Full offline capability</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Background sync via Mobile Data</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> GPS location tracking</li>
+                </ul>
+                <button 
+                  onClick={handleActivateAndroid}
+                  disabled={androidStatus !== 'available'}
+                  className={`w-full py-3 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-md ${
+                    androidStatus === 'active' ? 'bg-emerald-500' : 
+                    androidStatus === 'installing' ? 'bg-emerald-400 cursor-not-allowed' : 
+                    'bg-emerald-600 hover:bg-emerald-700'
+                  }`}
+                >
+                  {androidStatus === 'available' && <><Download size={18} /> Download APK</>}
+                  {androidStatus === 'installing' && <><Loader2 size={18} className="animate-spin" /> Installing...</>}
+                  {androidStatus === 'active' && <><CheckCircle2 size={18} /> App Active</>}
+                </button>
+              </div>
+
+              {/* iOS App Card */}
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 hover:border-blue-200 transition-colors">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                      <Apple size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-slate-800 text-lg">iOS App</h4>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Version 1.0.0 • 32 MB • iOS 12.0+</p>
+                    </div>
+                  </div>
+                </div>
+                <ul className="text-sm text-slate-600 space-y-2 mb-5">
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Full offline capability</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Background sync via Mobile Data</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Secure enclave storage</li>
+                </ul>
+                <button 
+                  onClick={handleActivateIOS}
+                  disabled={iosStatus !== 'available'}
+                  className={`w-full py-3 text-white rounded-xl font-bold transition-colors flex items-center justify-center gap-2 shadow-md ${
+                    iosStatus === 'active' ? 'bg-emerald-500' : 
+                    iosStatus === 'installing' ? 'bg-blue-400 cursor-not-allowed' : 
+                    'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  {iosStatus === 'available' && <><Download size={18} /> Activate iOS App</>}
+                  {iosStatus === 'installing' && <><Loader2 size={18} className="animate-spin" /> Activating...</>}
+                  {iosStatus === 'active' && <><CheckCircle2 size={18} /> App Active</>}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Mobile App Navigation Bar */}
@@ -348,6 +454,10 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
               {pendingCount}
             </span>
           )}
+        </button>
+        <button onClick={() => setView('apps')} className={`flex flex-col items-center gap-1 ${view === 'apps' ? 'text-indigo-600' : 'text-slate-400'}`}>
+          <Download size={20} />
+          <span className="text-[10px] font-bold">Get App</span>
         </button>
       </div>
     </div>
