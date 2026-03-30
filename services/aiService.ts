@@ -80,7 +80,14 @@ export const generateSurveyFromDescription = async (description: string, fileCon
       questions: [
         { text: "Beneficiary Name", type: "TEXT", required: true },
         { text: "Age", type: "NUMBER", required: true },
-        { text: "District", type: "MULTIPLE_CHOICE", options: ["Gasabo", "Kicukiro", "Nyarugenge"], required: true },
+        { text: "District", type: "MULTIPLE_CHOICE", options: [
+          "Burera District", "Gakenke District", "Gicumbi District", "Musanze District", "Rulindo District",
+          "Gisagara District", "Huye District", "Kamonyi District", "Muhanga District", "Nyamagabe District",
+          "Nyanza District", "Nyaruguru District", "Ruhango District", "Bugesera District", "Gatsibo District",
+          "Kayonza District", "Kirehe District", "Ngoma District", "Nyagatare District", "Rwamagana District",
+          "Karongi District", "Ngororero District", "Nyabihu District", "Nyamasheke District", "Rubavu District",
+          "Rusizi District", "Rutsiro District", "Gasabo District", "Kicukiro District", "Nyarugenge District"
+        ], required: true },
         { text: "Beneficiary Signature", type: "SIGNATURE", required: true }
       ]
     };

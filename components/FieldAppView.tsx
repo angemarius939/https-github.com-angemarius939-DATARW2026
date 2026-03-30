@@ -384,9 +384,10 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
                   </div>
                 </div>
                 <ul className="text-sm text-slate-600 space-y-2 mb-5">
-                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Full offline capability</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Background sync via Mobile Data</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> GPS location tracking</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Offline Collection</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Auto-Sync</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> Secure Access</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-emerald-500" /> GPS Tracking</li>
                 </ul>
                 <button 
                   onClick={handleActivateAndroid}
@@ -417,9 +418,10 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
                   </div>
                 </div>
                 <ul className="text-sm text-slate-600 space-y-2 mb-5">
-                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Full offline capability</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Background sync via Mobile Data</li>
-                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Secure enclave storage</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Offline Collection</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Auto-Sync</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> Secure Access</li>
+                  <li className="flex items-center gap-2"><CheckCircle2 size={16} className="text-blue-500" /> GPS Tracking</li>
                 </ul>
                 <button 
                   onClick={handleActivateIOS}

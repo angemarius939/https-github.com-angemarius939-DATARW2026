@@ -108,7 +108,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
             className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 mb-8"
           >
             <span className="flex h-2 w-2 rounded-full bg-indigo-600"></span>
-            <span className="text-sm font-medium text-indigo-800">🚀 Trusted by 500+ Organizations in Rwanda</span>
+            <span className="text-sm font-medium text-indigo-800">🚀 Trusted by Many Organizations in Rwanda</span>
           </div>
           
           <h1 
@@ -136,6 +136,35 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
               </div>
               Watch Demo
             </button>
+          </div>
+        </div>
+
+        {/* Trusted By Section */}
+        <div className="mt-24 border-y border-slate-200/60 bg-white/40 backdrop-blur-sm py-10 overflow-hidden relative">
+          <p className="text-center text-sm font-bold text-slate-500 uppercase tracking-widest mb-8">
+            Trusted by Many Organizations in Rwanda
+          </p>
+          <div className="flex overflow-hidden relative w-full">
+            <div className="flex gap-12 items-center animate-marquee whitespace-nowrap px-6">
+              {[
+                "Burera District", "Gakenke District", "Gicumbi District", "Musanze District", "Rulindo District",
+                "Gisagara District", "Huye District", "Kamonyi District", "Muhanga District", "Nyamagabe District",
+                "Nyanza District", "Nyaruguru District", "Ruhango District", "Bugesera District", "Gatsibo District",
+                "Kayonza District", "Kirehe District", "Ngoma District", "Nyagatare District", "Rwamagana District",
+                "Karongi District", "Ngororero District", "Nyabihu District", "Nyamasheke District", "Rubavu District",
+                "Rusizi District", "Rutsiro District", "Gasabo District", "Kicukiro District", "Nyarugenge District",
+                "Burera District", "Gakenke District", "Gicumbi District", "Musanze District", "Rulindo District",
+                "Gisagara District", "Huye District", "Kamonyi District", "Muhanga District", "Nyamagabe District",
+                "Nyanza District", "Nyaruguru District", "Ruhango District", "Bugesera District", "Gatsibo District",
+                "Kayonza District", "Kirehe District", "Ngoma District", "Nyagatare District", "Rwamagana District",
+                "Karongi District", "Ngororero District", "Nyabihu District", "Nyamasheke District", "Rubavu District",
+                "Rusizi District", "Rutsiro District", "Gasabo District", "Kicukiro District", "Nyarugenge District"
+              ].map((district, idx) => (
+                <span key={idx} className="text-xl font-bold text-slate-300/80">
+                  {district}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </header>

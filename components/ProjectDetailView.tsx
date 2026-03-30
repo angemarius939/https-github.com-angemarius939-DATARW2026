@@ -1701,17 +1701,15 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                       { prob: 'Low', impact: 'Low' }, { prob: 'Low', impact: 'Medium' }, { prob: 'Low', impact: 'High' }
                     ].map((cell, i) => {
                       const cellRisks = project.risks!.filter(r => r.probability === cell.prob && r.impact === cell.impact);
-                      const getRiskColor = (prob: string, impact: string) => {
-                        if (prob === 'High' && impact === 'High') return 'bg-red-500';
-                        if (prob === 'High' && impact === 'Medium') return 'bg-orange-500';
-                        if (prob === 'High' && impact === 'Low') return 'bg-amber-400';
-                        if (prob === 'Medium' && impact === 'High') return 'bg-orange-500';
-                        if (prob === 'Medium' && impact === 'Medium') return 'bg-amber-400';
-                        if (prob === 'Medium' && impact === 'Low') return 'bg-emerald-400';
-                        if (prob === 'Low' && impact === 'High') return 'bg-amber-400';
-                        if (prob === 'Low' && impact === 'Medium') return 'bg-emerald-400';
-                        if (prob === 'Low' && impact === 'Low') return 'bg-emerald-500';
-                        return 'bg-slate-300';
+                      const getRiskColor = (category: string) => {
+                        switch (category) {
+                          case 'Financial': return 'bg-blue-500';
+                          case 'Operational': return 'bg-emerald-500';
+                          case 'Strategic': return 'bg-purple-500';
+                          case 'Compliance': return 'bg-amber-500';
+                          case 'Reputational': return 'bg-rose-500';
+                          default: return 'bg-slate-500';
+                        }
                       };
                       const getBgColor = (prob: string, impact: string) => {
                         if (prob === 'High' && impact === 'High') return 'bg-red-50';
@@ -1734,8 +1732,8 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                               <button 
                                 key={r.id}
                                 onClick={() => setSelectedRiskId(r.id === selectedRiskId ? null : r.id)}
-                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform hover:scale-110 ${getRiskColor(r.probability, r.impact)} ${selectedRiskId === r.id ? 'ring-4 ring-offset-2 ring-indigo-600 scale-110' : ''}`}
-                                title={r.description}
+                                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shadow-sm transition-transform hover:scale-110 ${getRiskColor(r.category)} ${selectedRiskId === r.id ? 'ring-4 ring-offset-2 ring-indigo-600 scale-110' : ''}`}
+                                title={`${r.category}: ${r.description}`}
                               >
                                 {r.id.substring(0, 2).toUpperCase()}
                               </button>

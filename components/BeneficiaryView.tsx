@@ -239,12 +239,36 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
             <MapPin size={16} className="text-slate-400" />
             <select className="bg-transparent text-xs font-bold uppercase text-slate-600 outline-none cursor-pointer" value={filterDistrict} onChange={(e) => setFilterDistrict(e.target.value)}>
                 <option value="All">Districts: All</option>
-                <option value="Musanze">Musanze</option>
-                <option value="Gasabo">Gasabo</option>
-                <option value="Kicukiro">Kicukiro</option>
-                <option value="Nyarugenge">Nyarugenge</option>
-                <option value="Huye">Huye</option>
-                <option value="Kayonza">Kayonza</option>
+                <option value="Burera District">Burera District</option>
+                <option value="Gakenke District">Gakenke District</option>
+                <option value="Gicumbi District">Gicumbi District</option>
+                <option value="Musanze District">Musanze District</option>
+                <option value="Rulindo District">Rulindo District</option>
+                <option value="Gisagara District">Gisagara District</option>
+                <option value="Huye District">Huye District</option>
+                <option value="Kamonyi District">Kamonyi District</option>
+                <option value="Muhanga District">Muhanga District</option>
+                <option value="Nyamagabe District">Nyamagabe District</option>
+                <option value="Nyanza District">Nyanza District</option>
+                <option value="Nyaruguru District">Nyaruguru District</option>
+                <option value="Ruhango District">Ruhango District</option>
+                <option value="Bugesera District">Bugesera District</option>
+                <option value="Gatsibo District">Gatsibo District</option>
+                <option value="Kayonza District">Kayonza District</option>
+                <option value="Kirehe District">Kirehe District</option>
+                <option value="Ngoma District">Ngoma District</option>
+                <option value="Nyagatare District">Nyagatare District</option>
+                <option value="Rwamagana District">Rwamagana District</option>
+                <option value="Karongi District">Karongi District</option>
+                <option value="Ngororero District">Ngororero District</option>
+                <option value="Nyabihu District">Nyabihu District</option>
+                <option value="Nyamasheke District">Nyamasheke District</option>
+                <option value="Rubavu District">Rubavu District</option>
+                <option value="Rusizi District">Rusizi District</option>
+                <option value="Rutsiro District">Rutsiro District</option>
+                <option value="Gasabo District">Gasabo District</option>
+                <option value="Kicukiro District">Kicukiro District</option>
+                <option value="Nyarugenge District">Nyarugenge District</option>
             </select>
           </div>
           <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 rounded-2xl border border-slate-100 hover:border-indigo-200 transition-colors">

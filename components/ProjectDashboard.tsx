@@ -616,7 +616,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-end font-bold text-slate-600">High</div>
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.High.Low.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-amber-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -624,7 +624,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
             <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.High.Medium.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-orange-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -632,7 +632,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
             <div className="bg-red-50 p-4 rounded-xl border border-red-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.High.High.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-red-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -643,7 +643,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-end font-bold text-slate-600">Medium</div>
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.Medium.Low.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-emerald-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -651,7 +651,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.Medium.Medium.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-amber-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -659,7 +659,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
             <div className="bg-orange-50 p-4 rounded-xl border border-orange-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.Medium.High.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-orange-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -670,7 +670,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             <div className="bg-slate-50 p-3 rounded-xl flex items-center justify-end font-bold text-slate-600">Low</div>
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.Low.Low.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-slate-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -678,7 +678,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
             <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.Low.Medium.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-emerald-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
@@ -686,7 +686,7 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
             <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 min-h-[100px] flex flex-col gap-2">
               {riskMatrix.Low.High.map((r: any) => (
-                <div key={r.id} className="text-[10px] bg-white p-2 rounded shadow-sm border border-amber-200 font-medium leading-tight">
+                <div key={r.id} className={`text-[10px] bg-white p-2 rounded shadow-sm border font-medium leading-tight ${r.category === 'Financial' ? 'border-blue-200 border-l-4 border-l-blue-500' : r.category === 'Operational' ? 'border-emerald-200 border-l-4 border-l-emerald-500' : r.category === 'Strategic' ? 'border-purple-200 border-l-4 border-l-purple-500' : r.category === 'Compliance' ? 'border-amber-200 border-l-4 border-l-amber-500' : r.category === 'Reputational' ? 'border-rose-200 border-l-4 border-l-rose-500' : 'border-slate-200 border-l-4 border-l-slate-500'}`}>
                   <span className="font-bold text-slate-800 block mb-0.5">{r.projectName}</span>
                   {r.description}
                 </div>
