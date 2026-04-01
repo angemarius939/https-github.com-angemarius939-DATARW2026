@@ -57,9 +57,32 @@ import {
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
+const getSubdomain = (): string | null => {
+  const hostname = window.location.hostname;
+  // Ignore localhost, IP addresses, and AI Studio preview domains
+  if (hostname.includes('localhost') || hostname.match(/^\d+\.\d+\.\d+\.\d+$/) || hostname.includes('run.app')) {
+    return null;
+  }
+  
+  const parts = hostname.split('.');
+  if (parts.length >= 3 && parts[0] !== 'www') {
+    return parts[0];
+  }
+  return null;
+};
+
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>(() => {
-    return (localStorage.getItem('app_view') as ViewState) || ViewState.LANDING;
+    const savedView = localStorage.getItem('app_view') as ViewState;
+    const subdomain = getSubdomain();
+    
+    // If a subdomain is detected and the user is on the landing page, 
+    // force them to the login page for that tenant
+    if (subdomain && (!savedView || savedView === ViewState.LANDING)) {
+      return ViewState.LOGIN;
+    }
+    
+    return savedView || ViewState.LANDING;
   });
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeCustomPage, setActiveCustomPage] = useState<CustomPage | null>(null);
@@ -69,6 +92,11 @@ const App: React.FC = () => {
   
   // Multi-tenant & Admin State
   const [organizationName, setOrganizationName] = useState<string>(() => {
+    const subdomain = getSubdomain();
+    if (subdomain) {
+      // Capitalize the subdomain for display (e.g., 'eya' -> 'Eya')
+      return subdomain.charAt(0).toUpperCase() + subdomain.slice(1);
+    }
     return localStorage.getItem('app_org_name') || 'My Organization';
   });
   const [userName, setUserName] = useState<string>(() => {
@@ -364,8 +392,14 @@ const App: React.FC = () => {
   };
 
   const handleLogout = () => {
-    setView(ViewState.LANDING);
-    setOrganizationName('My Organization');
+    const subdomain = getSubdomain();
+    if (subdomain) {
+      setView(ViewState.LOGIN);
+      setOrganizationName(subdomain.charAt(0).toUpperCase() + subdomain.slice(1));
+    } else {
+      setView(ViewState.LANDING);
+      setOrganizationName('My Organization');
+    }
     setUserName('Admin User');
     setActiveProjectId(null);
   };
@@ -643,8 +677,8 @@ const App: React.FC = () => {
 
         <div className="flex-1 overflow-y-auto custom-scrollbar">
            {view === ViewState.LANDING && <LandingPage onLogin={() => setView(ViewState.LOGIN)} onRegister={() => setView(ViewState.REGISTER)} />}
-           {view === ViewState.LOGIN && <LoginView users={users} onLoginSuccess={handleLoginSuccess} onBack={() => setView(ViewState.LANDING)} onRegister={() => setView(ViewState.REGISTER)} />}
-           {view === ViewState.REGISTER && <RegisterView onRegisterSuccess={handleRegisterSuccess} onBack={() => setView(ViewState.LANDING)} />}
+           {view === ViewState.LOGIN && <LoginView users={users} onLoginSuccess={handleLoginSuccess} onBack={() => setView(ViewState.LANDING)} onRegister={() => setView(ViewState.REGISTER)} organizationName={organizationName} />}
+           {view === ViewState.REGISTER && <RegisterView onRegisterSuccess={handleRegisterSuccess} onBack={() => setView(ViewState.LANDING)} organizationName={organizationName} />}
            {view === ViewState.DASHBOARD_HOME && (
              <ProjectDashboard 
                organizationName={organizationName} 
@@ -732,6 +766,7 @@ const App: React.FC = () => {
                beneficiaries={beneficiaries}
                formSubmissions={formSubmissions}
                onNotify={notify}
+               organizationName={organizationName}
              />
            )}
            {view === ViewState.FIELD_APP && (

@@ -5,16 +5,17 @@ import { ArrowLeft, User, Mail, Lock, Building, CheckCircle, Loader2 } from 'luc
 interface RegisterViewProps {
   onRegisterSuccess: (orgName: string, userName: string, email: string, withDummyData: boolean) => void;
   onBack: () => void;
+  organizationName?: string;
 }
 
-const RegisterView: React.FC<RegisterViewProps> = ({ onRegisterSuccess, onBack }) => {
+const RegisterView: React.FC<RegisterViewProps> = ({ onRegisterSuccess, onBack, organizationName }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
     email: '',
     password: '',
-    organizationName: '',
+    organizationName: organizationName || '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {

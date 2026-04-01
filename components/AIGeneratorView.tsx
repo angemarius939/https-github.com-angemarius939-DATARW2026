@@ -42,7 +42,26 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ organizationName, pro
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [kpis, setKpis] = useState('');
-  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    const saved = localStorage.getItem(`app_ai_history_${organizationName}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((item: any) => ({
+          ...item,
+          timestamp: new Date(item.timestamp)
+        }));
+      } catch (e) {
+        console.error('Failed to parse AI history', e);
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem(`app_ai_history_${organizationName}`, JSON.stringify(history));
+  }, [history, organizationName]);
+
   const [showHistory, setShowHistory] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 

@@ -7,9 +7,10 @@ interface LoginViewProps {
   onLoginSuccess: (userId: string) => void;
   onBack: () => void;
   onRegister: () => void;
+  organizationName?: string;
 }
 
-const LoginView: React.FC<LoginViewProps> = ({ users, onLoginSuccess, onBack, onRegister }) => {
+const LoginView: React.FC<LoginViewProps> = ({ users, onLoginSuccess, onBack, onRegister, organizationName }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -50,10 +51,10 @@ const LoginView: React.FC<LoginViewProps> = ({ users, onLoginSuccess, onBack, on
            <div className="bg-indigo-600 text-white p-1.5 rounded-lg font-bold text-2xl">D</div>
         </div>
         <h2 className="mt-2 text-center text-3xl font-extrabold text-slate-900">
-          Sign in to your account
+          Sign in to {organizationName && organizationName !== 'My Organization' ? organizationName : 'your account'}
         </h2>
         <p className="mt-2 text-center text-sm text-slate-600">
-          Welcome back to DataRW.
+          Welcome back to {organizationName && organizationName !== 'My Organization' ? organizationName : 'DataRW'}.
         </p>
       </div>
 

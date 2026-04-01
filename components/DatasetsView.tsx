@@ -9,9 +9,10 @@ interface DatasetsViewProps {
   beneficiaries: Beneficiary[];
   formSubmissions: FormSubmission[];
   onNotify: (msg: string, type?: 'success' | 'error') => void;
+  organizationName?: string;
 }
 
-const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, surveys, beneficiaries, formSubmissions, onNotify }) => {
+const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, surveys, beneficiaries, formSubmissions, onNotify, organizationName = 'My Organization' }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
@@ -139,6 +140,16 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                const url = `https://api.datarw.org/v1/${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-')}/datasets/${selectedDatasetId}/odata`;
+                copyToClipboard(url, 'dataset_odata');
+              }}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-200 rounded-xl text-sm font-bold transition-all shadow-sm"
+              title="Copy OData URL for Power BI"
+            >
+              <ExternalLink size={16} /> Copy OData URL
+            </button>
             <button 
               onClick={() => handleExport(selectedDatasetId, 'csv')}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:text-indigo-600 hover:border-indigo-200 rounded-xl text-sm font-bold transition-all shadow-sm"
@@ -292,9 +303,9 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">OData Feed URL (Power BI)</label>
                   <div className="flex items-center gap-2 bg-black/30 p-2 rounded-xl border border-white/10">
-                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">https://api.example.com/odata/v1</code>
+                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">{`https://api.datarw.org/v1/${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-')}/odata`}</code>
                     <button 
-                      onClick={() => copyToClipboard('https://api.example.com/odata/v1', 'odata')}
+                      onClick={() => copyToClipboard(`https://api.datarw.org/v1/${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-')}/odata`, 'odata')}
                       className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-indigo-300"
                       title="Copy URL"
                     >
@@ -306,9 +317,9 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">REST API Endpoint</label>
                   <div className="flex items-center gap-2 bg-black/30 p-2 rounded-xl border border-white/10">
-                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">https://api.example.com/v1/datasets</code>
+                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">{`https://api.datarw.org/v1/${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-')}/datasets`}</code>
                     <button 
-                      onClick={() => copyToClipboard('https://api.example.com/v1/datasets', 'rest')}
+                      onClick={() => copyToClipboard(`https://api.datarw.org/v1/${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-')}/datasets`, 'rest')}
                       className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-indigo-300"
                       title="Copy URL"
                     >
@@ -322,10 +333,10 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
                   <div className="flex items-center gap-2 bg-black/30 p-2 rounded-xl border border-white/10">
                     <div className="flex items-center gap-2 flex-1 px-2">
                       <Key size={14} className="text-indigo-400" />
-                      <code className="text-xs text-indigo-100 truncate">sk_live_read_8f92...a1b2</code>
+                      <code className="text-xs text-indigo-100 truncate">{`sk_live_read_${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 4)}...a1b2`}</code>
                     </div>
                     <button 
-                      onClick={() => copyToClipboard('sk_live_read_8f92a4b1c3d5e7f8a1b2', 'key')}
+                      onClick={() => copyToClipboard(`sk_live_read_${organizationName.toLowerCase().replace(/[^a-z0-9]/g, '')}8f92a4b1c3d5e7f8a1b2`, 'key')}
                       className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-indigo-300"
                       title="Copy API Key"
                     >
