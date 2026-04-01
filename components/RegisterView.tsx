@@ -97,6 +97,12 @@ const RegisterView: React.FC<RegisterViewProps> = ({ onRegisterSuccess, onBack }
                   onChange={handleChange}
                 />
               </div>
+              {formData.organizationName && (
+                <p className="mt-2 text-sm text-slate-500 flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  Your workspace URL: <strong className="text-indigo-600">{formData.organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'your-workspace'}.datarw.com</strong>
+                </p>
+              )}
             </div>
 
             <div>

@@ -86,6 +86,17 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('app_user_name', userName);
   }, [userName]);
+
+  useEffect(() => {
+    if (view !== ViewState.LANDING && view !== ViewState.REGISTER && view !== ViewState.LOGIN) {
+      const subdomain = organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'workspace';
+      // Simulate subdomain/workspace branding in the URL path
+      window.history.replaceState(null, '', `/${subdomain}`);
+    } else {
+      window.history.replaceState(null, '', `/`);
+    }
+  }, [view, organizationName]);
+
   const [virtualTables, setVirtualTables] = useState<VirtualTable[]>([
     { 
       id: 'beneficiaries', 
@@ -418,7 +429,12 @@ const App: React.FC = () => {
         <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white transition-transform md:relative md:translate-x-0 flex flex-col ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="h-16 flex items-center px-6 border-b border-slate-800 shrink-0">
              <div className="bg-indigo-600 text-white p-1 rounded-md font-bold mr-2 text-sm">D</div>
-             <span className="font-bold text-lg">DataRW</span>
+             <div className="flex flex-col">
+               <span className="font-bold text-lg leading-tight">DataRW</span>
+               <span className="text-[10px] text-indigo-300 font-mono leading-tight truncate max-w-[160px]">
+                 {organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'workspace'}.datarw.com
+               </span>
+             </div>
           </div>
 
           <div className="px-4 py-6 space-y-1 overflow-y-auto flex-1 custom-scrollbar">
