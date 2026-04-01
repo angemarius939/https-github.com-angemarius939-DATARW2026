@@ -4,7 +4,7 @@ import {
   HardDrive, Folder, FileText, Search, Plus, 
   MoreVertical, Download, Clock, Filter, 
   Trash2, Loader2, X, UploadCloud, CheckCircle,
-  FileJson, FileSpreadsheet
+  FileJson, FileSpreadsheet, Eye
 } from 'lucide-react';
 
 interface DocumentsViewProps {
@@ -18,6 +18,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }
   const [searchQuery, setSearchQuery] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const categories = ['All', 'Proposals', 'Reports', 'Agreements', 'Field Data', 'Media'];
@@ -200,7 +201,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }
                     <td className="px-6 py-4"><div className="flex items-center gap-3"><div className={`p-2 rounded-lg bg-indigo-50 text-indigo-600`}><FileText size={18} /></div><div className="font-bold text-slate-900">{doc.name}</div></div></td>
                     <td className="px-6 py-4 text-slate-600">{doc.category}</td>
                     <td className="px-6 py-4 text-slate-500 text-xs">{doc.date}</td>
-                    <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => onNotify(`Downloading ${doc.name}`)} className="p-2 text-slate-400 hover:text-indigo-600"><Download size={18}/></button><button onClick={() => onNotify("File deletion restricted", "error")} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18}/></button></div></td>
+                    <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => setPreviewDoc(doc)} className="p-2 text-slate-400 hover:text-indigo-600"><Eye size={18}/></button><button onClick={() => onNotify(`Downloading ${doc.name}`)} className="p-2 text-slate-400 hover:text-indigo-600"><Download size={18}/></button><button onClick={() => onNotify("File deletion restricted", "error")} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18}/></button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -223,6 +224,62 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }
               </div>
               <div className="mt-2 text-xs font-bold text-indigo-600 uppercase tracking-widest">{uploadProgress}%</div>
            </div>
+        </div>
+      )}
+
+      {previewDoc && (
+        <div className="fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 backdrop-blur-md">
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl animate-scale-in overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                  <FileText size={20} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900">{previewDoc.name}</h3>
+                  <p className="text-xs text-slate-500">{previewDoc.size} • {previewDoc.date}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => onNotify(`Downloading ${previewDoc.name}`)}
+                  className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                  title="Download"
+                >
+                  <Download size={20} />
+                </button>
+                <button 
+                  onClick={() => setPreviewDoc(null)}
+                  className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 bg-slate-100 flex items-center justify-center">
+              {/* Simulated Document Content */}
+              <div className="bg-white shadow-sm border border-slate-200 w-full max-w-2xl min-h-[600px] p-12">
+                <div className="h-8 w-3/4 bg-slate-200 rounded mb-8"></div>
+                <div className="space-y-4">
+                  <div className="h-4 w-full bg-slate-100 rounded"></div>
+                  <div className="h-4 w-full bg-slate-100 rounded"></div>
+                  <div className="h-4 w-5/6 bg-slate-100 rounded"></div>
+                  <div className="h-4 w-full bg-slate-100 rounded"></div>
+                  <div className="h-4 w-4/5 bg-slate-100 rounded"></div>
+                </div>
+                <div className="mt-8 space-y-4">
+                  <div className="h-4 w-full bg-slate-100 rounded"></div>
+                  <div className="h-4 w-full bg-slate-100 rounded"></div>
+                  <div className="h-4 w-3/4 bg-slate-100 rounded"></div>
+                </div>
+                <div className="mt-12 flex justify-center">
+                  <div className="h-48 w-full bg-slate-50 border border-slate-200 rounded flex items-center justify-center text-slate-400">
+                    [ Document Content Preview ]
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
