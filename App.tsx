@@ -87,16 +87,6 @@ const App: React.FC = () => {
     localStorage.setItem('app_user_name', userName);
   }, [userName]);
 
-  useEffect(() => {
-    if (view !== ViewState.LANDING && view !== ViewState.REGISTER && view !== ViewState.LOGIN) {
-      const subdomain = organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'workspace';
-      // Simulate subdomain/workspace branding in the URL path
-      window.history.replaceState(null, '', `/${subdomain}`);
-    } else {
-      window.history.replaceState(null, '', `/`);
-    }
-  }, [view, organizationName]);
-
   const [virtualTables, setVirtualTables] = useState<VirtualTable[]>([
     { 
       id: 'beneficiaries', 
@@ -432,7 +422,7 @@ const App: React.FC = () => {
              <div className="flex flex-col">
                <span className="font-bold text-lg leading-tight">DataRW</span>
                <span className="text-[10px] text-indigo-300 font-mono leading-tight truncate max-w-[160px]">
-                 {organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'workspace'}.datarw.com
+                 {organizationName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'workspace'}.datarw.org
                </span>
              </div>
           </div>
