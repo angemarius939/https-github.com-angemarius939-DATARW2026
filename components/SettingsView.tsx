@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 /* Import missing Columns icon */
 import * as Icons from 'lucide-react';
-import { Settings, Layout, Plus, Trash2, Save, Database, Table, Grid, LayoutDashboard, X, FilePlus, Users, Shield, PieChart, BarChart as BarChartIcon, LineChart as LineChartIcon, Check, Columns } from 'lucide-react';
+import { Settings, Layout, Plus, Trash2, Save, Database, Table, Grid, LayoutDashboard, X, FilePlus, Users, Shield, PieChart, BarChart as BarChartIcon, LineChart as LineChartIcon, Check, Columns, AlertCircle } from 'lucide-react';
 import { CustomPage, DataSourceType, PageWidget, WidgetType, ChartType, AppUser } from '../types';
 import { SOURCE_FIELDS } from '../constants';
 
@@ -10,6 +10,7 @@ interface SettingsViewProps {
   customPages: CustomPage[];
   onSavePage: (page: CustomPage) => void;
   onDeletePage: (pageId: string) => void;
+  onDeleteOrganization: () => void;
 }
 
 const AVAILABLE_ICONS = [
@@ -26,9 +27,10 @@ const AVAILABLE_ICONS = [
   'Unlock', 'Upload', 'User', 'UserPlus', 'Video', 'Wifi', 'Zap'
 ];
 
-const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, onDeletePage }) => {
+const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, onDeletePage, onDeleteOrganization }) => {
   const [activeTab, setActiveTab] = useState<'general' | 'pages' | 'users'>('pages');
   const [isPageModalOpen, setIsPageModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   
   const [users, setUsers] = useState<AppUser[]>([
     { id: '1', name: 'Alice Admin', email: 'alice@example.com', role: 'Admin', status: 'ACTIVE', lastLogin: '2026-03-15', department: 'IT', permissions: ['all'] },
@@ -223,8 +225,32 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
           )}
           
           {activeTab === 'general' && (
-            <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm text-center text-slate-500">
-               General Settings Placeholder
+            <div className="space-y-6">
+              <div className="bg-white p-8 rounded-xl border border-slate-200 shadow-sm">
+                 <h2 className="text-lg font-bold text-slate-900 mb-2">General Settings</h2>
+                 <p className="text-sm text-slate-500 mb-6">Manage your organization's general preferences.</p>
+                 <div className="text-center text-slate-500 py-8 border-2 border-dashed border-slate-200 rounded-lg">
+                   General Settings Placeholder
+                 </div>
+              </div>
+
+              <div className="bg-red-50 p-8 rounded-xl border border-red-200 shadow-sm">
+                 <h2 className="text-lg font-bold text-red-700 mb-2">Danger Zone</h2>
+                 <p className="text-sm text-red-600 mb-6">Irreversible and destructive actions.</p>
+                 
+                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white rounded-lg border border-red-100">
+                   <div>
+                     <h3 className="font-bold text-slate-900">Delete Organization Account</h3>
+                     <p className="text-sm text-slate-500">Permanently delete your organization and all associated data.</p>
+                   </div>
+                   <button 
+                     onClick={() => setIsDeleteModalOpen(true)}
+                     className="shrink-0 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                   >
+                     Delete Organization
+                   </button>
+                 </div>
+              </div>
             </div>
           )}
           
@@ -508,6 +534,63 @@ const SettingsView: React.FC<SettingsViewProps> = ({ customPages, onSavePage, on
                <button onClick={() => setIsPageModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold text-sm hover:bg-slate-50 rounded-lg">Cancel</button>
                <button onClick={handleSave} className="px-8 py-2.5 bg-indigo-600 text-white font-black text-sm uppercase tracking-widest rounded-lg hover:bg-indigo-700 shadow-lg flex items-center gap-2">
                  <Save size={18} /> Publish Configuration
+               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-red-50 shrink-0">
+               <div className="flex items-center gap-3 text-red-700">
+                 <AlertCircle size={24} />
+                 <h2 className="text-xl font-black tracking-tight">Delete Organization</h2>
+               </div>
+               <button onClick={() => setIsDeleteModalOpen(false)} className="text-red-400 hover:text-red-600 hover:bg-red-100 p-2 rounded-full transition-colors">
+                 <X size={20} />
+               </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+               <p className="text-slate-700 mb-4 font-medium">
+                 Are you absolutely sure you want to delete your organization account?
+               </p>
+               <div className="bg-red-50 border border-red-100 rounded-lg p-4 mb-6">
+                 <ul className="list-disc list-inside text-sm text-red-700 space-y-1">
+                   <li>All projects and datasets will be permanently removed.</li>
+                   <li>All user accounts associated with this organization will be deleted.</li>
+                   <li>This action <strong>cannot be undone</strong>.</li>
+                 </ul>
+               </div>
+               <p className="text-sm text-slate-500 mb-2">
+                 To confirm, please type <strong>DELETE</strong> below:
+               </p>
+               <input 
+                 type="text" 
+                 className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                 placeholder="DELETE"
+                 id="delete-confirm-input"
+                 onChange={(e) => {
+                   const btn = document.getElementById('confirm-delete-btn') as HTMLButtonElement;
+                   if (btn) {
+                     btn.disabled = e.target.value !== 'DELETE';
+                   }
+                 }}
+               />
+            </div>
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+               <button onClick={() => setIsDeleteModalOpen(false)} className="px-5 py-2.5 text-slate-600 font-bold text-sm hover:bg-slate-200 rounded-lg transition-colors">Cancel</button>
+               <button 
+                 id="confirm-delete-btn"
+                 disabled
+                 onClick={() => {
+                   setIsDeleteModalOpen(false);
+                   onDeleteOrganization();
+                 }} 
+                 className="px-6 py-2.5 bg-red-600 text-white font-bold text-sm rounded-lg hover:bg-red-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+               >
+                 <Trash2 size={18} /> Permanently Delete
                </button>
             </div>
           </div>

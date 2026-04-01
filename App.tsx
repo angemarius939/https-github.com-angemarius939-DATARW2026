@@ -370,6 +370,19 @@ const App: React.FC = () => {
     setActiveProjectId(null);
   };
 
+  const handleDeleteOrganization = () => {
+    localStorage.clear();
+    localStorage.setItem('show_delete_notification', 'true');
+    window.location.reload();
+  };
+
+  useEffect(() => {
+    if (localStorage.getItem('show_delete_notification')) {
+      notify('Organization account deleted successfully.', 'success');
+      localStorage.removeItem('show_delete_notification');
+    }
+  }, []);
+
   const handleCustomPageClick = (page: CustomPage) => {
     setActiveCustomPage(page);
     setView(ViewState.CUSTOM_PAGE);
@@ -699,7 +712,7 @@ const App: React.FC = () => {
            {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} docs={globalDocuments} setDocs={setGlobalDocuments} />}
            {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={(config) => setPageConfigs(prev => ({ ...prev, [activeProjectId || 'global']: { ...prev[activeProjectId || 'global'], REPORTS: { ...prev[activeProjectId || 'global']?.REPORTS, ...config } as ViewConfig } }))} />}
            {view === ViewState.TEAM && <TeamView onNotify={notify} />}
-           {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages(customPages.some(cp => cp.id === p.id) ? customPages.map(cp => cp.id === p.id ? p : cp) : [...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} />}
+           {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages(customPages.some(cp => cp.id === p.id) ? customPages.map(cp => cp.id === p.id ? p : cp) : [...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} onDeleteOrganization={handleDeleteOrganization} />}
            {view === ViewState.CUSTOM_PAGE && activeCustomPage && <CustomPageView page={activeCustomPage} />}
            {view === ViewState.DATA_ANALYSIS && (
              <DataAnalysisView 
