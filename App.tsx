@@ -69,7 +69,7 @@ const App: React.FC = () => {
   
   // Multi-tenant & Admin State
   const [organizationName, setOrganizationName] = useState<string>(() => {
-    return localStorage.getItem('app_org_name') || 'SaveRwanda';
+    return localStorage.getItem('app_org_name') || 'My Organization';
   });
   const [userName, setUserName] = useState<string>(() => {
     return localStorage.getItem('app_user_name') || 'Admin User';
@@ -142,10 +142,10 @@ const App: React.FC = () => {
       }
     }
     return [
-      { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
-      { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
-      { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
-      { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
+      { id: 'u1', name: 'Admin User', email: 'admin@example.com', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
+      { id: 'u2', name: 'Project Manager', email: 'pm@example.com', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
+      { id: 'u3', name: 'Field Officer', email: 'field@example.com', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
+      { id: 'u4', name: 'Viewer User', email: 'viewer@example.com', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
     ];
   });
 
@@ -364,7 +364,7 @@ const App: React.FC = () => {
 
   const handleLogout = () => {
     setView(ViewState.LANDING);
-    setOrganizationName('SaveRwanda');
+    setOrganizationName('My Organization');
     setUserName('Admin User');
     setActiveProjectId(null);
   };

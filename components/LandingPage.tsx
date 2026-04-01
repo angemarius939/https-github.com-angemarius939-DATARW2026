@@ -451,7 +451,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                  <div className="w-full h-full bg-white rounded-[32px] overflow-hidden flex flex-col">
                     <div className="bg-indigo-600 p-6 pt-12 text-white">
                        <h3 className="font-bold text-lg">Active Surveys</h3>
-                       <p className="text-indigo-200 text-xs">Organization: SaveRwanda</p>
+                       <p className="text-indigo-200 text-xs">Organization: Example Org</p>
                     </div>
                     <div className="p-4 space-y-3 bg-slate-50 flex-1">
                        {[1,2,3].map(i => (

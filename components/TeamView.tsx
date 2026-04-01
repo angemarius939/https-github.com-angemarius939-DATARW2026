@@ -18,9 +18,9 @@ const TeamView: React.FC<TeamViewProps> = ({ onNotify }) => {
   const [inviteData, setInviteData] = useState({ email: '', role: 'Field Officer' });
 
   const team = [
-    { id: 1, name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'Online', lastActive: 'Now', avatar: 'JB' },
-    { id: 2, name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'Offline', lastActive: '2h ago', avatar: 'MC' },
-    { id: 3, name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'Online', lastActive: '15m ago', avatar: 'EM' },
+    { id: 1, name: 'Admin User', email: 'admin@example.com', role: 'Admin', status: 'Online', lastActive: 'Now', avatar: 'AU' },
+    { id: 2, name: 'Project Manager', email: 'pm@example.com', role: 'Project Manager', status: 'Offline', lastActive: '2h ago', avatar: 'PM' },
+    { id: 3, name: 'Field Officer', email: 'field@example.com', role: 'Field Officer', status: 'Online', lastActive: '15m ago', avatar: 'FO' },
   ];
 
   const handleInvite = () => {
@@ -92,7 +92,7 @@ const TeamView: React.FC<TeamViewProps> = ({ onNotify }) => {
               <div className="p-8 pt-0 space-y-6">
                  <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Work Email</label>
-                    <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="colleague@saverwanda.org" value={inviteData.email} onChange={(e) => setInviteData({...inviteData, email: e.target.value})} />
+                    <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="colleague@example.com" value={inviteData.email} onChange={(e) => setInviteData({...inviteData, email: e.target.value})} />
                  </div>
                  <div>
                     <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">System Role</label>

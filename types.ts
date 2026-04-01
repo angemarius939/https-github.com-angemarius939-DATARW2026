@@ -296,7 +296,7 @@ export interface FormFieldCondition {
 
 export interface FormFieldDefinition {
   id: string;
-  type: 'text' | 'number' | 'date' | 'dropdown' | 'checkbox' | 'file';
+  type: 'text' | 'number' | 'date' | 'dropdown' | 'checkbox' | 'file' | 'location';
   label: string;
   placeholder?: string;
   required: boolean;

@@ -292,9 +292,9 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">OData Feed URL (Power BI)</label>
                   <div className="flex items-center gap-2 bg-black/30 p-2 rounded-xl border border-white/10">
-                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">https://api.saverwanda.org/odata/v1</code>
+                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">https://api.example.com/odata/v1</code>
                     <button 
-                      onClick={() => copyToClipboard('https://api.saverwanda.org/odata/v1', 'odata')}
+                      onClick={() => copyToClipboard('https://api.example.com/odata/v1', 'odata')}
                       className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-indigo-300"
                       title="Copy URL"
                     >
@@ -306,9 +306,9 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-indigo-300 uppercase tracking-widest">REST API Endpoint</label>
                   <div className="flex items-center gap-2 bg-black/30 p-2 rounded-xl border border-white/10">
-                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">https://api.saverwanda.org/v1/datasets</code>
+                    <code className="text-xs text-indigo-100 flex-1 truncate px-2">https://api.example.com/v1/datasets</code>
                     <button 
-                      onClick={() => copyToClipboard('https://api.saverwanda.org/v1/datasets', 'rest')}
+                      onClick={() => copyToClipboard('https://api.example.com/v1/datasets', 'rest')}
                       className="p-1.5 hover:bg-white/10 rounded-lg transition-colors text-indigo-300"
                       title="Copy URL"
                     >
