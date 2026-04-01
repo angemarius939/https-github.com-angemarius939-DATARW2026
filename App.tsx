@@ -58,7 +58,9 @@ import {
 import * as Icons from 'lucide-react';
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewState>(ViewState.LANDING);
+  const [view, setView] = useState<ViewState>(() => {
+    return (localStorage.getItem('app_view') as ViewState) || ViewState.LANDING;
+  });
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [activeCustomPage, setActiveCustomPage] = useState<CustomPage | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -66,8 +68,24 @@ const App: React.FC = () => {
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error'} | null>(null);
   
   // Multi-tenant & Admin State
-  const [organizationName, setOrganizationName] = useState<string>('SaveRwanda');
-  const [userName, setUserName] = useState<string>('Admin User');
+  const [organizationName, setOrganizationName] = useState<string>(() => {
+    return localStorage.getItem('app_org_name') || 'SaveRwanda';
+  });
+  const [userName, setUserName] = useState<string>(() => {
+    return localStorage.getItem('app_user_name') || 'Admin User';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_view', view);
+  }, [view]);
+
+  useEffect(() => {
+    localStorage.setItem('app_org_name', organizationName);
+  }, [organizationName]);
+
+  useEffect(() => {
+    localStorage.setItem('app_user_name', userName);
+  }, [userName]);
   const [virtualTables, setVirtualTables] = useState<VirtualTable[]>([
     { 
       id: 'beneficiaries', 
@@ -114,13 +132,35 @@ const App: React.FC = () => {
     { id: 'r4', name: 'Viewer', description: 'Read-only access to reports and documents.', permissions: ['Projects', 'Reports', 'Documents'] },
   ]);
   const [projectTemplates, setProjectTemplates] = useState<ProjectTemplate[]>([]);
-  const [users, setUsers] = useState<AppUser[]>([
-    { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
-    { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
-    { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
-    { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
-  ]);
-  const [currentUserId, setCurrentUserId] = useState<string>('u1');
+  const [users, setUsers] = useState<AppUser[]>(() => {
+    const saved = localStorage.getItem('app_users');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved users', e);
+      }
+    }
+    return [
+      { id: 'u1', name: 'Jean Bosco N.', email: 'bosco@saverwanda.org', role: 'Admin', status: 'ACTIVE', lastLogin: '2025-05-12 14:30', department: 'Operations' },
+      { id: 'u2', name: 'Marie Claire U.', email: 'marie@saverwanda.org', role: 'Project Manager', status: 'ACTIVE', lastLogin: '2025-05-11 09:15', department: 'Programs' },
+      { id: 'u3', name: 'Eric Mutabazi', email: 'eric@saverwanda.org', role: 'Field Officer', status: 'ACTIVE', lastLogin: '2025-05-12 08:45', department: 'Field' },
+      { id: 'u4', name: 'Sandra Uwase', email: 'sandra@saverwanda.org', role: 'Viewer', status: 'INACTIVE', lastLogin: '2025-04-30 11:20', department: 'M&E' },
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_users', JSON.stringify(users));
+  }, [users]);
+
+  const [currentUserId, setCurrentUserId] = useState<string>(() => {
+    return localStorage.getItem('app_current_user_id') || 'u1';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_current_user_id', currentUserId);
+  }, [currentUserId]);
+
   const currentUser = users.find(u => u.id === currentUserId) || users[0];
 
   const hasPermission = (permission: string) => {
@@ -148,96 +188,136 @@ const App: React.FC = () => {
     }
   }, [isDarkMode]);
 
-  const [globalDocuments, setGlobalDocuments] = useState<any[]>([
-    { id: 1, name: 'Water_Project_Proposal_Final.pdf', type: 'PDF', category: 'Proposals', size: '2.4 MB', owner: 'Jean B.', date: '2024-03-10', content: 'Proposal for providing clean water to the Northern Province. Focus on borehole drilling and community training.' },
-    { id: 2, name: 'MoU_Ministry_of_Health.pdf', type: 'PDF', category: 'Agreements', size: '1.1 MB', owner: 'Admin', date: '2024-01-05', content: 'Memorandum of Understanding with the Ministry of Health for the Maternal Health Clinic project.' },
-    { id: 3, name: 'Beneficiary_Survey_Results.csv', type: 'CSV', category: 'Field Data', size: '15.2 MB', owner: 'Eric M.', date: '2024-04-12', content: 'Survey results showing 85% satisfaction with the new agricultural training programs.' },
-    { id: 4, name: 'Annual_Impact_Report_2023.docx', type: 'DOCX', category: 'Reports', size: '4.8 MB', owner: 'Marie C.', date: '2024-01-20', content: 'Annual report detailing the impact of 2023 projects. 15,000 beneficiaries reached across 3 provinces.' },
-    { id: 5, name: 'Site_Photos_Musanze.zip', type: 'ZIP', category: 'Media', size: '45.0 MB', owner: 'Jean B.', date: '2024-02-15', content: '' },
-  ]);
-
-  const [projects, setProjects] = useState<Project[]>([
-    { 
-      id: '1', name: 'Clean Water Initiative', description: 'Providing clean and safe drinking water to rural communities.', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', endDate: '2025-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], 
-      narrative: '<h2>Project Overview</h2><p>The Clean Water Initiative is a comprehensive program designed to address the critical lack of safe drinking water in the Northern Province.</p><h3>Key Objectives</h3><ul><li>Drill 5 new boreholes in Musanze district.</li><li>Provide hygiene and sanitation training to 1,200 community members.</li><li>Establish local water management committees to ensure long-term sustainability.</li></ul><blockquote><p>"Access to clean water is not just a health issue; it is a fundamental human right that empowers communities." - Project Manager</p></blockquote><p>Recent progress has been excellent, with 3 boreholes already operational and training sessions scheduled for the upcoming month.</p>',
-      indicators: [
-        {
-          id: 'ind1',
-          code: 'G1',
-          name: 'Reduction in waterborne diseases',
-          expectedResult: 'Improved health outcomes in target communities',
-          level: 'Goal',
-          unit: '%',
-          frequency: 'Annually',
-          baseline: '15',
-          overallTarget: '5',
-          achieved: '10',
-          periodicData: [],
-          dataSource: 'District Health Records',
-          dataCollectionMethod: 'Health Center Reports',
-          responsible: 'M&E Officer',
-          timeline: '2024-2026'
-        },
-        {
-          id: 'ind2',
-          code: 'O1',
-          name: 'Number of functional boreholes',
-          expectedResult: 'Increased access to clean water sources',
-          level: 'Output',
-          unit: 'boreholes',
-          frequency: 'Quarterly',
-          baseline: '0',
-          overallTarget: '5',
-          achieved: '3',
-          periodicData: [],
-          dataSource: 'Project Field Reports',
-          dataCollectionMethod: 'Site Visits',
-          responsible: 'Project Manager',
-          timeline: 'Year 1 (2024)'
-        }
-      ],
-      thematicAreas: ['WASH', 'Health'],
-      interventions: [
-        { id: 'i1', name: 'Borehole Drilling', type: 'Infrastructure', targetDemographic: 'Rural Communities', startDate: '2024-02-01', endDate: '2024-08-01', status: 'Completed', budgetAllocated: 20000000, beneficiariesReached: 800, description: 'Drilling 5 new boreholes in Musanze district.' },
-        { id: 'i2', name: 'Hygiene Training', type: 'Training', targetDemographic: 'Women and Children', startDate: '2024-05-01', endDate: '2024-11-01', status: 'Active', budgetAllocated: 5000000, beneficiariesReached: 400, description: 'Community workshops on safe water storage and sanitation.' }
-      ],
-      risks: [
-        { id: 'r1', description: 'Delays in equipment delivery due to supply chain issues', category: 'Operational', probability: 'Medium', impact: 'High', mitigationStrategy: 'Source from multiple local vendors where possible.', status: 'Mitigated', owner: 'Jean Bosco' }
-      ],
-      partners: [
-        { id: 'p1', name: 'WaterAid Rwanda', role: 'Implementing Partner', contributionAmount: 15000000, contactPerson: 'Alice M.', email: 'alice@wateraid.org' }
-      ]
-    },
-    { 
-      id: '2', name: 'Rural Education Support', description: 'Improving access to quality education in remote areas.', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, beneficiaries: 850, startDate: '2024-03-15', endDate: '2025-03-15', manager: 'Marie Claire', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
-      thematicAreas: ['Education', 'Youth Empowerment'],
-      interventions: [
-        { id: 'i3', name: 'School Supply Distribution', type: 'Distribution', targetDemographic: 'Primary Students', startDate: '2024-04-01', endDate: '2024-05-01', status: 'Completed', budgetAllocated: 8000000, beneficiariesReached: 850, description: 'Distributing notebooks, pens, and uniforms.' },
-        { id: 'i4', name: 'Teacher Training', type: 'Training', targetDemographic: 'Primary Teachers', startDate: '2024-06-01', endDate: '2024-12-01', status: 'Suspended', budgetAllocated: 10000000, beneficiariesReached: 50, description: 'Pedagogical training for rural educators.' }
-      ],
-      risks: [
-        { id: 'r2', description: 'Low teacher turnout for training sessions', category: 'Operational', probability: 'High', impact: 'Medium', mitigationStrategy: 'Provide transport stipends and schedule during school holidays.', status: 'Open', owner: 'Marie Claire' }
-      ],
-      partners: [
-        { id: 'p2', name: 'Ministry of Education', role: 'Government', contactPerson: 'John D.', email: 'john.d@mineduc.gov.rw' }
-      ]
+  const [globalDocuments, setGlobalDocuments] = useState<any[]>(() => {
+    const saved = localStorage.getItem('app_documents');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-  ]);
+    return [
+      { id: 1, name: 'Water_Project_Proposal_Final.pdf', type: 'PDF', category: 'Proposals', size: '2.4 MB', owner: 'Jean B.', date: '2024-03-10', content: 'Proposal for providing clean water to the Northern Province. Focus on borehole drilling and community training.' },
+      { id: 2, name: 'MoU_Ministry_of_Health.pdf', type: 'PDF', category: 'Agreements', size: '1.1 MB', owner: 'Admin', date: '2024-01-05', content: 'Memorandum of Understanding with the Ministry of Health for the Maternal Health Clinic project.' },
+      { id: 3, name: 'Beneficiary_Survey_Results.csv', type: 'CSV', category: 'Field Data', size: '15.2 MB', owner: 'Eric M.', date: '2024-04-12', content: 'Survey results showing 85% satisfaction with the new agricultural training programs.' },
+      { id: 4, name: 'Annual_Impact_Report_2023.docx', type: 'DOCX', category: 'Reports', size: '4.8 MB', owner: 'Marie C.', date: '2024-01-20', content: 'Annual report detailing the impact of 2023 projects. 15,000 beneficiaries reached across 3 provinces.' },
+      { id: 5, name: 'Site_Photos_Musanze.zip', type: 'ZIP', category: 'Media', size: '45.0 MB', owner: 'Jean B.', date: '2024-02-15', content: '' },
+    ];
+  });
 
-  const [surveys, setSurveys] = useState<Survey[]>([
-    { id: 's1', title: 'Agricultural Impact Assessment', description: 'Q1 2025 Survey', status: 'Active', responseCount: 1240, createdAt: '2025-01-15', linkedProjectId: '3' }
-  ]);
+  useEffect(() => {
+    localStorage.setItem('app_documents', JSON.stringify(globalDocuments));
+  }, [globalDocuments]);
 
-  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>([
-    { id: 'b1', firstName: 'Ange', lastName: 'Mutoni', gender: 'Female', age: 28, location: 'Musanze', status: 'Active', enrollmentDate: '2024-01-12', educationLevel: 'Secondary', householdSize: 4, programs: ['Clean Water Initiative'], cases: [] }
-  ]);
+  const [projects, setProjects] = useState<Project[]>(() => {
+    const saved = localStorage.getItem('app_projects');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { 
+        id: '1', name: 'Clean Water Initiative', description: 'Providing clean and safe drinking water to rural communities.', location: 'Northern Prov.', status: 'On Track', progress: 75, budget: 45000000, spent: 32000000, beneficiaries: 1200, startDate: '2024-01-10', endDate: '2025-01-10', manager: 'Jean Bosco', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], 
+        narrative: '<h2>Project Overview</h2><p>The Clean Water Initiative is a comprehensive program designed to address the critical lack of safe drinking water in the Northern Province.</p><h3>Key Objectives</h3><ul><li>Drill 5 new boreholes in Musanze district.</li><li>Provide hygiene and sanitation training to 1,200 community members.</li><li>Establish local water management committees to ensure long-term sustainability.</li></ul><blockquote><p>"Access to clean water is not just a health issue; it is a fundamental human right that empowers communities." - Project Manager</p></blockquote><p>Recent progress has been excellent, with 3 boreholes already operational and training sessions scheduled for the upcoming month.</p>',
+        indicators: [
+          {
+            id: 'ind1',
+            code: 'G1',
+            name: 'Reduction in waterborne diseases',
+            expectedResult: 'Improved health outcomes in target communities',
+            level: 'Goal',
+            unit: '%',
+            frequency: 'Annually',
+            baseline: '15',
+            overallTarget: '5',
+            achieved: '10',
+            periodicData: [],
+            dataSource: 'District Health Records',
+            dataCollectionMethod: 'Health Center Reports',
+            responsible: 'M&E Officer',
+            timeline: '2024-2026'
+          },
+          {
+            id: 'ind2',
+            code: 'O1',
+            name: 'Number of functional boreholes',
+            expectedResult: 'Increased access to clean water sources',
+            level: 'Output',
+            unit: 'boreholes',
+            frequency: 'Quarterly',
+            baseline: '0',
+            overallTarget: '5',
+            achieved: '3',
+            periodicData: [],
+            dataSource: 'Project Field Reports',
+            dataCollectionMethod: 'Site Visits',
+            responsible: 'Project Manager',
+            timeline: 'Year 1 (2024)'
+          }
+        ],
+        thematicAreas: ['WASH', 'Health'],
+        interventions: [
+          { id: 'i1', name: 'Borehole Drilling', type: 'Infrastructure', targetDemographic: 'Rural Communities', startDate: '2024-02-01', endDate: '2024-08-01', status: 'Completed', budgetAllocated: 20000000, beneficiariesReached: 800, description: 'Drilling 5 new boreholes in Musanze district.' },
+          { id: 'i2', name: 'Hygiene Training', type: 'Training', targetDemographic: 'Women and Children', startDate: '2024-05-01', endDate: '2024-11-01', status: 'Active', budgetAllocated: 5000000, beneficiariesReached: 400, description: 'Community workshops on safe water storage and sanitation.' }
+        ],
+        risks: [
+          { id: 'r1', description: 'Delays in equipment delivery due to supply chain issues', category: 'Operational', probability: 'Medium', impact: 'High', mitigationStrategy: 'Source from multiple local vendors where possible.', status: 'Mitigated', owner: 'Jean Bosco' }
+        ],
+        partners: [
+          { id: 'p1', name: 'WaterAid Rwanda', role: 'Implementing Partner', contributionAmount: 15000000, contactPerson: 'Alice M.', email: 'alice@wateraid.org' }
+        ]
+      },
+      { 
+        id: '2', name: 'Rural Education Support', description: 'Improving access to quality education in remote areas.', location: 'Eastern Prov.', status: 'Delayed', progress: 45, budget: 32000000, spent: 12000000, beneficiaries: 850, startDate: '2024-03-15', endDate: '2025-03-15', manager: 'Marie Claire', beneficiaryList: [], activityLog: [], activities: [], budgetLines: [], indicators: [],
+        thematicAreas: ['Education', 'Youth Empowerment'],
+        interventions: [
+          { id: 'i3', name: 'School Supply Distribution', type: 'Distribution', targetDemographic: 'Primary Students', startDate: '2024-04-01', endDate: '2024-05-01', status: 'Completed', budgetAllocated: 8000000, beneficiariesReached: 850, description: 'Distributing notebooks, pens, and uniforms.' },
+          { id: 'i4', name: 'Teacher Training', type: 'Training', targetDemographic: 'Primary Teachers', startDate: '2024-06-01', endDate: '2024-12-01', status: 'Suspended', budgetAllocated: 10000000, beneficiariesReached: 50, description: 'Pedagogical training for rural educators.' }
+        ],
+        risks: [
+          { id: 'r2', description: 'Low teacher turnout for training sessions', category: 'Operational', probability: 'High', impact: 'Medium', mitigationStrategy: 'Provide transport stipends and schedule during school holidays.', status: 'Open', owner: 'Marie Claire' }
+        ],
+        partners: [
+          { id: 'p2', name: 'Ministry of Education', role: 'Government', contactPerson: 'John D.', email: 'john.d@mineduc.gov.rw' }
+        ]
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_projects', JSON.stringify(projects));
+  }, [projects]);
+
+  const [surveys, setSurveys] = useState<Survey[]>(() => {
+    const saved = localStorage.getItem('app_surveys');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 's1', title: 'Agricultural Impact Assessment', description: 'Q1 2025 Survey', status: 'Active', responseCount: 1240, createdAt: '2025-01-15', linkedProjectId: '3' }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_surveys', JSON.stringify(surveys));
+  }, [surveys]);
+
+  const [beneficiaries, setBeneficiaries] = useState<Beneficiary[]>(() => {
+    const saved = localStorage.getItem('app_beneficiaries');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'b1', firstName: 'Ange', lastName: 'Mutoni', gender: 'Female', age: 28, location: 'Musanze', status: 'Active', enrollmentDate: '2024-01-12', educationLevel: 'Secondary', householdSize: 4, programs: ['Clean Water Initiative'], cases: [] }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('app_beneficiaries', JSON.stringify(beneficiaries));
+  }, [beneficiaries]);
 
   const notify = (message: string, type: 'success' | 'error' = 'success') => {
     setNotification({ message, type });
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleRegisterSuccess = (org: string, userName: string, email: string) => {
+  const handleRegisterSuccess = (org: string, userName: string, email: string, withDummyData: boolean) => {
     setOrganizationName(org);
     setUserName(userName);
     
@@ -249,10 +329,20 @@ const App: React.FC = () => {
       role: 'Admin',
       status: 'ACTIVE',
       lastLogin: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      department: 'Management'
+      department: 'Management',
+      organization: org
     };
     
-    setUsers([...users, newUser]);
+    if (!withDummyData) {
+      setProjects([]);
+      setBeneficiaries([]);
+      setSurveys([]);
+      setGlobalDocuments([]);
+      setUsers([newUser]);
+    } else {
+      setUsers([...users, newUser]);
+    }
+
     setCurrentUserId(newUser.id);
     
     setView(ViewState.DASHBOARD_HOME);
@@ -264,6 +354,9 @@ const App: React.FC = () => {
     if (user) {
       setCurrentUserId(userId);
       setUserName(user.name);
+      if (user.organization) {
+        setOrganizationName(user.organization);
+      }
       setView(ViewState.DASHBOARD_HOME);
       notify(`Welcome back, ${user.name}.`);
     }

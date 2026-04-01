@@ -16,6 +16,7 @@ export interface AppUser {
   lastLogin: string;
   department: string;
   permissions?: string[];
+  organization?: string;
 }
 
 export enum ViewState {

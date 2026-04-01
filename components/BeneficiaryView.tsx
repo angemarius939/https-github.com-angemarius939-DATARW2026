@@ -1,6 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Beneficiary, ViewConfig, Project, VirtualTable } from '../types';
+import { LocationSelector } from './LocationSelector';
+import { mockLocations } from '../data/locations';
 import { 
   Users, Search, Filter, Plus, MoreVertical, 
   MapPin, GraduationCap, Home, Calendar, 
@@ -472,8 +474,10 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Identification & Contact</label>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                        <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Beneficiary ID *</label>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">ID Number *</label>
                           <input 
+                             type="text"
+                             required
                              placeholder="ID Number" 
                              className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold" 
                              value={newBen.idNumber} 
@@ -545,24 +549,23 @@ const BeneficiaryView: React.FC<BeneficiaryViewProps> = ({
                  {/* Social Context */}
                  <div className="space-y-5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Social Context</label>
+                    
+                    <div className="space-y-1.5">
+                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Location</label>
+                       <LocationSelector 
+                         locations={mockLocations}
+                         onLocationChange={(loc) => {
+                           // Store the most specific location available
+                           const specificLoc = loc.village || loc.cell || loc.sector || loc.district || loc.province || 'Unknown';
+                           setNewBen({...newBen, location: specificLoc});
+                         }}
+                       />
+                       {newBen.location && newBen.location !== 'Unknown' && (
+                         <p className="text-xs text-indigo-600 font-medium px-2 mt-1">Selected: {newBen.location}</p>
+                       )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       <div className="space-y-1.5">
-                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">District / Province</label>
-                          <select 
-                             className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                             value={newBen.location} 
-                             onChange={(e) => setNewBen({...newBen, location: e.target.value})}
-                          >
-                             <option value="Kigali City">Kigali City</option>
-                             <option value="Musanze">Musanze</option>
-                             <option value="Gasabo">Gasabo</option>
-                             <option value="Kicukiro">Kicukiro</option>
-                             <option value="Nyarugenge">Nyarugenge</option>
-                             <option value="Huye">Huye</option>
-                             <option value="Kayonza">Kayonza</option>
-                             <option value="Rubavu">Rubavu</option>
-                          </select>
-                       </div>
                        <div className="space-y-1.5">
                           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Education Level</label>
                           <select 

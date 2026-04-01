@@ -37,6 +37,7 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ organizationName, pro
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   const [responseFormat, setResponseFormat] = useState<'standard' | 'bullets' | 'numbers' | 'table'>('standard');
   const [reportType, setReportType] = useState<'custom' | 'project_summary' | 'budget_variance' | 'beneficiary_reach'>('custom');
+  const [dataset, setDataset] = useState<'all' | 'projects' | 'surveys' | 'beneficiaries'>('all');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -139,6 +140,19 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ organizationName, pro
         totalSurveys: surveys.length,
         totalBeneficiaries: beneficiaries.length,
       };
+
+      if (dataset === 'beneficiaries') {
+        contextData.beneficiariesData = beneficiaries.map(b => ({
+          id: b.id,
+          gender: b.gender,
+          age: b.age,
+          location: b.location,
+          status: b.status,
+          educationLevel: b.educationLevel,
+          householdSize: b.householdSize,
+          vulnerabilityScore: b.vulnerabilityScore
+        }));
+      }
 
       if (selectedProjectId === 'all') {
         contextData.projectsSummary = projects.map(p => ({ 
@@ -362,6 +376,20 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ organizationName, pro
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <div className="relative">
               <select
+                value={dataset}
+                onChange={(e) => setDataset(e.target.value as any)}
+                className="appearance-none bg-white border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer shadow-sm"
+              >
+                <option value="all">All Datasets</option>
+                <option value="projects">Projects</option>
+                <option value="surveys">Surveys</option>
+                <option value="beneficiaries">Beneficiaries</option>
+              </select>
+              <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            </div>
+
+            <div className="relative">
+              <select
                 value={selectedProjectId}
                 onChange={(e) => setSelectedProjectId(e.target.value)}
                 className="appearance-none bg-white border border-slate-200 text-slate-700 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer shadow-sm"
@@ -465,6 +493,23 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ organizationName, pro
                <span className="text-xs font-semibold">Table</span>
              </button>
           </div>
+
+          {/* Available Variables */}
+          {dataset === 'beneficiaries' && (
+            <div className="mt-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+              <h3 className="text-sm font-bold text-indigo-800 mb-2">Available Variables for Analysis</h3>
+              <div className="flex flex-wrap gap-2">
+                {['Age', 'Location', 'Education Level', 'Household Size', 'Gender', 'Status', 'Vulnerability Score'].map(variable => (
+                  <span key={variable} className="px-2.5 py-1 bg-white border border-indigo-200 text-indigo-700 text-xs font-semibold rounded-md shadow-sm">
+                    {variable}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-indigo-600 mt-2">
+                You can explicitly ask the AI to analyze or group data by these variables in your prompt.
+              </p>
+            </div>
+          )}
           
           {/* File Upload Section */}
           <div className="mt-6">

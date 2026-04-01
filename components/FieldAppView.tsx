@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Wifi, WifiOff, RefreshCw, CheckCircle2, FileText, ArrowLeft, Save, Clock, AlertCircle, Download, Apple, MonitorSmartphone, Loader2 } from 'lucide-react';
 import { FormDefinition, Project, FormSubmission } from '../types';
+import { LocationSelector } from './LocationSelector';
+import { mockLocations } from '../data/locations';
 
 interface FieldAppViewProps {
   forms: FormDefinition[];
@@ -303,6 +305,21 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
                       />
                       <span className="text-sm text-slate-700">{field.label}</span>
                     </label>
+                  )}
+
+                  {field.type === 'location' && (
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
+                      <LocationSelector 
+                        locations={mockLocations}
+                        onLocationChange={(loc) => {
+                          const specificLoc = loc.village || loc.cell || loc.sector || loc.district || loc.province || '';
+                          handleInputChange(field.id, specificLoc);
+                        }}
+                      />
+                      {formData[field.id] && (
+                        <p className="text-xs text-indigo-600 font-medium mt-2">Selected: {formData[field.id]}</p>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}

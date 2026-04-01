@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Project, BudgetLine, ActivityLogEntry, ProjectActivity, Beneficiary, ProjectIndicator, IndicatorTarget, LogframeElement, Survey, VirtualTable, ProjectRisk } from '../types';
+import { LocationSelector } from './LocationSelector';
+import { mockLocations } from '../data/locations';
 import ProjectDetailView from './ProjectDetailView';
 import { 
   FolderKanban, Plus, Search, Filter, MoreVertical, 
@@ -702,7 +704,16 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                   </div>
                   <div className="space-y-1.5">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Operational Area</label>
-                      <input className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-bold placeholder:text-slate-300" placeholder="Location" value={newProjectData.location} onChange={(e) => setNewProjectData({...newProjectData, location: e.target.value})} />
+                      <LocationSelector 
+                        locations={mockLocations}
+                        onLocationChange={(loc) => {
+                          const specificLoc = loc.village || loc.cell || loc.sector || loc.district || loc.province || '';
+                          setNewProjectData({...newProjectData, location: specificLoc});
+                        }}
+                      />
+                      {newProjectData.location && (
+                        <p className="text-xs text-indigo-600 font-medium px-2 mt-1">Selected: {newProjectData.location}</p>
+                      )}
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                      <div className="space-y-1.5">
@@ -1674,11 +1685,16 @@ const ProjectsView: React.FC<ProjectsViewProps> = ({
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                  <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Location</label>
-                                    <input 
-                                       className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold"
-                                       value={settingsForm.location}
-                                       onChange={(e) => setSettingsForm({...settingsForm, location: e.target.value})}
+                                    <LocationSelector 
+                                      locations={mockLocations}
+                                      onLocationChange={(loc) => {
+                                        const specificLoc = loc.village || loc.cell || loc.sector || loc.district || loc.province || '';
+                                        setSettingsForm({...settingsForm, location: specificLoc});
+                                      }}
                                     />
+                                    {settingsForm.location && (
+                                      <p className="text-xs text-indigo-600 font-medium px-2 mt-1">Selected: {settingsForm.location}</p>
+                                    )}
                                  </div>
                                  <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Total Budget (RWF)</label>

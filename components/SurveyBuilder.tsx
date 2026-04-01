@@ -251,14 +251,41 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
                               <span className="text-[10px] font-black uppercase tracking-widest absolute bottom-2">Image Upload Placeholder</span>
                            </div>
                          )}
-                         {q.type === 'MULTIPLE_CHOICE' && q.options && (
+                         {q.type === 'MULTIPLE_CHOICE' && (
                            <div className="space-y-2">
-                              {q.options.map((opt, i) => (
+                              {(q.options || []).map((opt, i) => (
                                 <div key={i} className="flex items-center gap-2">
-                                  <div className="w-4 h-4 rounded-full border border-slate-300"></div>
-                                  <span className="text-sm text-slate-600">{opt}</span>
+                                  <div className="w-4 h-4 rounded-full border border-slate-300 shrink-0"></div>
+                                  <input 
+                                    className="text-sm text-slate-600 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-indigo-500 outline-none flex-1"
+                                    value={opt}
+                                    onChange={(e) => {
+                                      const qcopy = [...generatedSurvey.questions];
+                                      if (!qcopy[idx].options) qcopy[idx].options = [];
+                                      qcopy[idx].options![i] = e.target.value;
+                                      setGeneratedSurvey({...generatedSurvey, questions: qcopy});
+                                    }}
+                                  />
+                                  <button onClick={() => {
+                                      const qcopy = [...generatedSurvey.questions];
+                                      qcopy[idx].options!.splice(i, 1);
+                                      setGeneratedSurvey({...generatedSurvey, questions: qcopy});
+                                  }} className="text-slate-300 hover:text-red-500">
+                                    <X size={14} />
+                                  </button>
                                 </div>
                               ))}
+                              <button 
+                                onClick={() => {
+                                  const qcopy = [...generatedSurvey.questions];
+                                  if (!qcopy[idx].options) qcopy[idx].options = [];
+                                  qcopy[idx].options!.push(`Option ${(qcopy[idx].options?.length || 0) + 1}`);
+                                  setGeneratedSurvey({...generatedSurvey, questions: qcopy});
+                                }}
+                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 mt-2"
+                              >
+                                <Plus size={12} /> Add Option
+                              </button>
                            </div>
                          )}
                          {(q.type === 'TEXT' || q.type === 'NUMBER' || q.type === 'DATE') && (
@@ -349,9 +376,25 @@ const SurveyBuilder: React.FC<SurveyBuilderProps> = ({ initialSurveys, setGlobal
               <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
               <div className="flex-1"></div>
               <button
+                 onClick={() => {
+                   setEditingSurveyId('new');
+                   setGeneratedSurvey({
+                     surveyTitle: 'New Survey',
+                     surveyDescription: 'Description of the new survey',
+                     linkedProjectId: activeProjectId || undefined,
+                     customFields: {},
+                     questions: []
+                   });
+                 }}
+                 className="w-full md:w-auto bg-white border-2 border-slate-200 text-slate-700 px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest hover:border-indigo-600 hover:text-indigo-600 transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                 <Plus size={18} />
+                 Create Blank
+              </button>
+              <button
                  onClick={handleGenerate}
                  disabled={isLoading || !prompt.trim()}
-                 className="w-full md:w-auto bg-slate-900 text-white px-10 py-3 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl disabled:opacity-50"
+                 className="w-full md:w-auto bg-slate-900 text-white px-10 py-3 rounded-xl font-black text-sm uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
               >
                  {isLoading ? <Loader2 className="animate-spin" size={18} /> : <Sparkles size={18} />}
                  Generate Survey

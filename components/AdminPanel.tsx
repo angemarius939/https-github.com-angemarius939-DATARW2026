@@ -1359,6 +1359,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                              <option value="dropdown">DROPDOWN LIST</option>
                                              <option value="checkbox">CHECKBOX (YES/NO)</option>
                                              <option value="file">FILE UPLOAD</option>
+                                             <option value="location">HIERARCHICAL LOCATION</option>
                                           </select>
                                           <label className="flex items-center gap-2 mt-4 cursor-pointer">
                                              <input 
