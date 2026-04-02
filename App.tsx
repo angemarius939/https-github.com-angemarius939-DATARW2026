@@ -47,6 +47,7 @@ import DatasetsView from './components/DatasetsView';
 import FieldAppView from './components/FieldAppView';
 import AIGeneratorView from './components/AIGeneratorView';
 import ResearchView from './components/ResearchView';
+import InfographicsView from './components/InfographicsView';
 import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser, PageWidget, RoleDefinition, ProjectTemplate } from './types';
 import { 
   LayoutDashboard, FileText, FolderKanban, Settings, LogOut, 
@@ -442,6 +443,7 @@ const App: React.FC = () => {
       [ViewState.FIELD_APP]: 'Field App',
       [ViewState.DATA_ANALYSIS]: 'Data Analysis',
       [ViewState.AI_GENERATOR]: 'AI Generator',
+      [ViewState.INFOGRAPHICS]: 'AI Generator', // Map Infographics to AI Generator permission
       [ViewState.DATASETS]: 'Datasets',
       [ViewState.DOCUMENTS]: 'Documents',
       [ViewState.REPORTS]: 'Reports',
@@ -511,9 +513,14 @@ const App: React.FC = () => {
                </button>
              )}
              {hasPermission('AI Generator') && (
-               <button onClick={() => setView(ViewState.AI_GENERATOR)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.AI_GENERATOR ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-                 <Bot size={18} /> AI Generator
-               </button>
+               <>
+                 <button onClick={() => setView(ViewState.AI_GENERATOR)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.AI_GENERATOR ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                   <Bot size={18} /> AI Generator
+                 </button>
+                 <button onClick={() => setView(ViewState.INFOGRAPHICS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.INFOGRAPHICS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                   <PieChart size={18} /> Infographics
+                 </button>
+               </>
              )}
              {hasPermission('Datasets') && (
                <button onClick={() => setView(ViewState.DATASETS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DATASETS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
@@ -791,6 +798,17 @@ const App: React.FC = () => {
                projects={projects}
                surveys={surveys}
                beneficiaries={beneficiaries}
+               onNotify={notify}
+             />
+           )}
+           {view === ViewState.INFOGRAPHICS && (
+             <InfographicsView 
+               projects={projects}
+               surveys={surveys}
+               beneficiaries={beneficiaries}
+               virtualTables={virtualTables}
+               dynamicForms={dynamicForms}
+               formSubmissions={formSubmissions}
                onNotify={notify}
              />
            )}
