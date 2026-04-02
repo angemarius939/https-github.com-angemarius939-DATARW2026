@@ -203,7 +203,10 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             <Plus size={16} /> Initialize New Project
           </button>
           <button 
-            onClick={() => onNotify("Full organization report is being generated. Check your email in 5 minutes.")}
+            onClick={() => {
+              onNotify("Opening print dialog to save report as PDF...", "success");
+              setTimeout(() => window.print(), 500);
+            }}
             className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-slate-800 flex items-center gap-2 shadow-lg"
           >
             <Download size={16} /> Download Report

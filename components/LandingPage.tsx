@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Menu, X, Check, Smartphone, BarChart2, FileText, Shield, Globe, Zap, ChevronRight, Database, Users, Activity, Server } from 'lucide-react';
+import { Menu, X, Check, Smartphone, BarChart2, FileText, Shield, Globe, Zap, ChevronRight, Database, Users, Activity, Server, Microscope } from 'lucide-react';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -318,6 +318,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                 desc: "Generate monthly, quarterly, annual reports automatically with customizable templates and exports."
               },
               {
+                icon: <Microscope className="text-indigo-500" />,
+                title: "Research Hub",
+                desc: "Synthesize datasets and documents to generate detailed evaluation reports and perform advanced analysis."
+              },
+              {
                 icon: <Smartphone className="text-slate-700" />,
                 title: "Offline Mobile Data",
                 desc: "Field researchers can collect data anywhere without internet. Auto-sync when connection is restored."
@@ -417,7 +422,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
                       <h3 className="font-bold text-slate-900">Android App</h3>
                     </div>
                     <p className="text-sm text-slate-500 mb-4">Version 1.0.0 • 25 MB • Android 5.0+</p>
-                    <button className="w-full bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors">
+                    <button 
+                      onClick={() => {
+                        const content = "This is a simulated APK file for the Field App.";
+                        const blob = new Blob([content], { type: 'application/vnd.android.package-archive' });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', 'field-app-v1.0.apk');
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        URL.revokeObjectURL(url);
+                      }}
+                      className="w-full bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
+                    >
                       Download APK
                     </button>
                  </div>

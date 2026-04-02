@@ -77,6 +77,20 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }
     onNotify(`Exported ${filteredDocs.length} documents as ${format.toUpperCase()}`, 'success');
   };
 
+  const handleDownloadDocument = (doc: any) => {
+    const content = `Document Name: ${doc.name}\nCategory: ${doc.category}\nDate: ${doc.date}\nSize: ${doc.size}\n\nThis is a simulated downloaded file for the document repository.`;
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', doc.name);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    onNotify(`Downloaded ${doc.name}`, 'success');
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -201,7 +215,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }
                     <td className="px-6 py-4"><div className="flex items-center gap-3"><div className={`p-2 rounded-lg bg-indigo-50 text-indigo-600`}><FileText size={18} /></div><div className="font-bold text-slate-900">{doc.name}</div></div></td>
                     <td className="px-6 py-4 text-slate-600">{doc.category}</td>
                     <td className="px-6 py-4 text-slate-500 text-xs">{doc.date}</td>
-                    <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => setPreviewDoc(doc)} className="p-2 text-slate-400 hover:text-indigo-600"><Eye size={18}/></button><button onClick={() => onNotify(`Downloading ${doc.name}`)} className="p-2 text-slate-400 hover:text-indigo-600"><Download size={18}/></button><button onClick={() => onNotify("File deletion restricted", "error")} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18}/></button></div></td>
+                    <td className="px-6 py-4 text-right"><div className="flex items-center justify-end gap-2"><button onClick={() => setPreviewDoc(doc)} className="p-2 text-slate-400 hover:text-indigo-600"><Eye size={18}/></button><button onClick={() => handleDownloadDocument(doc)} className="p-2 text-slate-400 hover:text-indigo-600"><Download size={18}/></button><button onClick={() => onNotify("File deletion restricted", "error")} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={18}/></button></div></td>
                   </tr>
                 ))}
               </tbody>
@@ -242,7 +256,7 @@ const DocumentsView: React.FC<DocumentsViewProps> = ({ onNotify, docs, setDocs }
               </div>
               <div className="flex items-center gap-2">
                 <button 
-                  onClick={() => onNotify(`Downloading ${previewDoc.name}`)}
+                  onClick={() => handleDownloadDocument(previewDoc)}
                   className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                   title="Download"
                 >

@@ -139,6 +139,18 @@ const FieldAppView: React.FC<FieldAppViewProps> = ({ forms, projects, onNotify, 
   const handleActivateAndroid = () => {
     setAndroidStatus('installing');
     onNotify("Downloading Android APK...", "success");
+    
+    const content = "This is a simulated APK file for the Field App.";
+    const blob = new Blob([content], { type: 'application/vnd.android.package-archive' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'field-app-v1.0.apk');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     setTimeout(() => {
       setAndroidStatus('active');
       onNotify("Android App Installed Successfully!", "success");

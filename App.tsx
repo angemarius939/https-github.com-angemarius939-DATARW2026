@@ -46,6 +46,7 @@ import DataAnalysisView from './components/DataAnalysisView';
 import DatasetsView from './components/DatasetsView';
 import FieldAppView from './components/FieldAppView';
 import AIGeneratorView from './components/AIGeneratorView';
+import ResearchView from './components/ResearchView';
 import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser, PageWidget, RoleDefinition, ProjectTemplate } from './types';
 import { 
   LayoutDashboard, FileText, FolderKanban, Settings, LogOut, 
@@ -53,7 +54,7 @@ import {
   Layout, CheckCircle2, ChevronDown, Layers, Wrench,
   FolderOpen, BarChart3, Database, MessageSquare,
   Edit3, Plus, Table as TableIcon, FilePlus, LineChart, Smartphone, BrainCircuit, Bot,
-  Moon, Sun
+  Moon, Sun, Microscope
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -444,6 +445,7 @@ const App: React.FC = () => {
       [ViewState.DATASETS]: 'Datasets',
       [ViewState.DOCUMENTS]: 'Documents',
       [ViewState.REPORTS]: 'Reports',
+      [ViewState.RESEARCH]: 'Reports', // Map Research to Reports permission
       [ViewState.ADMIN_PANEL]: 'Admin Panel',
       [ViewState.SETTINGS]: 'Admin Panel' // Assuming settings is admin only
     };
@@ -528,9 +530,14 @@ const App: React.FC = () => {
                </button>
              )}
              {hasPermission('Reports') && (
-               <button onClick={() => setView(ViewState.REPORTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.REPORTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-                 <BarChart3 size={18} /> Reports Hub
-               </button>
+               <>
+                 <button onClick={() => setView(ViewState.REPORTS)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.REPORTS ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                   <BarChart3 size={18} /> Reports Hub
+                 </button>
+                 <button onClick={() => setView(ViewState.RESEARCH)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.RESEARCH ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                   <Microscope size={18} /> Research
+                 </button>
+               </>
              )}
              
              {customPages.length > 0 && (
@@ -745,6 +752,7 @@ const App: React.FC = () => {
            )}
            {view === ViewState.DOCUMENTS && <DocumentsView onNotify={notify} docs={globalDocuments} setDocs={setGlobalDocuments} />}
            {view === ViewState.REPORTS && <ReportsView activeProjectId={activeProjectId} projects={projects} onNotify={notify} config={getPageConfig('REPORTS')} onSaveConfig={(config) => setPageConfigs(prev => ({ ...prev, [activeProjectId || 'global']: { ...prev[activeProjectId || 'global'], REPORTS: { ...prev[activeProjectId || 'global']?.REPORTS, ...config } as ViewConfig } }))} />}
+           {view === ViewState.RESEARCH && <ResearchView projects={projects} virtualTables={virtualTables} documents={globalDocuments} onNotify={notify} />}
            {view === ViewState.TEAM && <TeamView onNotify={notify} />}
            {view === ViewState.SETTINGS && <SettingsView customPages={customPages} onSavePage={(p) => setCustomPages(customPages.some(cp => cp.id === p.id) ? customPages.map(cp => cp.id === p.id ? p : cp) : [...customPages, p])} onDeletePage={(id) => setCustomPages(customPages.filter(cp => cp.id !== id))} onDeleteOrganization={handleDeleteOrganization} />}
            {view === ViewState.CUSTOM_PAGE && activeCustomPage && <CustomPageView page={activeCustomPage} />}

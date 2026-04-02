@@ -199,6 +199,13 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
     }, 2500);
   };
 
+  const handleDownloadPDF = () => {
+    onNotify('Opening print dialog to save as PDF...', 'success');
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto animate-fade-in">
       <div className="flex justify-between items-start mb-10">
@@ -437,7 +444,7 @@ const ReportsView: React.FC<ReportsViewProps> = ({ activeProjectId, projects, on
             </div>
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
               <button onClick={() => setGeneratedReport(null)} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors">Close</button>
-              <button className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all flex items-center gap-2">
+              <button onClick={handleDownloadPDF} className="px-6 py-2.5 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all flex items-center gap-2">
                 <Download size={16} /> Download PDF
               </button>
             </div>

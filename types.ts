@@ -36,7 +36,8 @@ export enum ViewState {
   DATA_ANALYSIS = 'DATA_ANALYSIS',
   DATASETS = 'DATASETS',
   FIELD_APP = 'FIELD_APP',
-  AI_GENERATOR = 'AI_GENERATOR'
+  AI_GENERATOR = 'AI_GENERATOR',
+  RESEARCH = 'RESEARCH'
 }
 
 export enum QuestionType {

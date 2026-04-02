@@ -274,9 +274,11 @@ const AIGeneratorView: React.FC<AIGeneratorViewProps> = ({ organizationName, pro
 
   const handleDownloadPDF = () => {
     // In a real app, we would use a library like html2pdf.js or jspdf
-    // For this prototype, we'll simulate the download or just print the page
-    window.print();
-    onNotify('Preparing PDF download...', 'success');
+    // For this prototype, we'll use the browser's print dialog to save as PDF
+    onNotify('Opening print dialog to save as PDF...', 'success');
+    setTimeout(() => {
+      window.print();
+    }, 500);
   };
 
   const handleDownloadCSV = () => {
