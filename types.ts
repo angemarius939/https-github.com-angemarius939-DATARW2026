@@ -139,6 +139,13 @@ export interface ActivityLogEntry {
   user: string;
 }
 
+export interface ActivityAchievement {
+  id: string;
+  date: string;
+  description: string;
+  reportedBy: string;
+}
+
 export interface ProjectActivity {
   id: string;
   name: string;
@@ -150,6 +157,7 @@ export interface ProjectActivity {
   linkedOutputId: string;
   completionPercentage: number;
   dependencies?: string[];
+  achievements?: ActivityAchievement[];
 }
 
 export interface Beneficiary {

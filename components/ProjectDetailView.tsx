@@ -88,6 +88,14 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
     status: 'Not Started'
   });
 
+  const [isAchievementModalOpen, setIsAchievementModalOpen] = useState(false);
+  const [achievementActivityId, setAchievementActivityId] = useState<string | null>(null);
+  const [achievementForm, setAchievementForm] = useState<Partial<ActivityAchievement>>({
+    date: new Date().toISOString().split('T')[0],
+    description: '',
+    reportedBy: 'Current User'
+  });
+
   const handleOpenMilestoneModal = (milestone?: ProjectMilestone) => {
     if (milestone) {
       setEditingMilestoneId(milestone.id);
@@ -326,6 +334,40 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
     onUpdateProject({ ...project, activities: updatedActivities });
     setIsLinkModalOpen(false);
     setLinkForm({ source: '', target: '' });
+  };
+
+  const handleOpenAchievementModal = (activityId: string) => {
+    setAchievementActivityId(activityId);
+    setAchievementForm({
+      date: new Date().toISOString().split('T')[0],
+      description: '',
+      reportedBy: 'Current User'
+    });
+    setIsAchievementModalOpen(true);
+  };
+
+  const handleSaveAchievement = () => {
+    if (!onUpdateProject || !achievementActivityId) return;
+    
+    const newAchievement: ActivityAchievement = {
+      id: `ach_${Date.now()}`,
+      date: achievementForm.date || new Date().toISOString().split('T')[0],
+      description: achievementForm.description || '',
+      reportedBy: achievementForm.reportedBy || 'Current User'
+    };
+
+    const updatedActivities = (project.activities || []).map(a => {
+      if (a.id === achievementActivityId) {
+        return {
+          ...a,
+          achievements: [...(a.achievements || []), newAchievement]
+        };
+      }
+      return a;
+    });
+
+    onUpdateProject({ ...project, activities: updatedActivities });
+    setIsAchievementModalOpen(false);
   };
 
   const handleDeleteActivity = (id: string) => {
@@ -1052,83 +1094,112 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                       {onUpdateProject && <th className="pb-3 text-[10px] font-black uppercase tracking-widest text-slate-400 text-right">Actions</th>}
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {project.activities.map(activity => (
-                      <tr key={activity.id} className="hover:bg-slate-50 transition-colors group">
-                        <td className="py-4 pr-4">
-                          <p className="font-bold text-slate-900 text-sm">{activity.name}</p>
-                          <div className="flex items-center gap-3 mt-1">
-                            <p className="text-xs text-slate-500 flex items-center gap-1">
-                              <User size={12} /> {activity.assignedTo}
-                            </p>
-                            {activity.dependencies && activity.dependencies.length > 0 && (
-                              <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title={`Depends on: ${activity.dependencies.map(d => project.activities?.find(a => a.id === d)?.name).join(', ')}`}>
-                                <AlertTriangle size={10} />
-                                {activity.dependencies.length} dep(s)
+                    <tbody className="divide-y divide-slate-100">
+                      {project.activities.map(activity => (
+                        <React.Fragment key={activity.id}>
+                          <tr className="hover:bg-slate-50 transition-colors group">
+                            <td className="py-4 pr-4">
+                              <p className="font-bold text-slate-900 text-sm">{activity.name}</p>
+                              <div className="flex items-center gap-3 mt-1">
+                                <p className="text-xs text-slate-500 flex items-center gap-1">
+                                  <User size={12} /> {activity.assignedTo}
+                                </p>
+                                {activity.dependencies && activity.dependencies.length > 0 && (
+                                  <div className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200" title={`Depends on: ${activity.dependencies.map(d => project.activities?.find(a => a.id === d)?.name).join(', ')}`}>
+                                    <AlertTriangle size={10} />
+                                    {activity.dependencies.length} dep(s)
+                                  </div>
+                                )}
                               </div>
+                            </td>
+                            <td className="py-4 pr-4">
+                              <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600">
+                                {activity.category}
+                              </span>
+                            </td>
+                            <td className="py-4 pr-4">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getActivityStatusColor(activity.status)}`}>
+                                {getActivityStatusIcon(activity.status)}
+                                {activity.status}
+                              </span>
+                            </td>
+                            <td className="py-4 pr-4">
+                              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                                <Calendar size={12} className="text-slate-400" />
+                                {activity.startDate} <ArrowLeft size={10} className="rotate-180 text-slate-300" /> {activity.endDate}
+                              </div>
+                            </td>
+                            <td className="py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden w-24">
+                                  <div 
+                                    className={`h-full rounded-full ${activity.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+                                    style={{width: `${activity.completionPercentage}%`}}
+                                  ></div>
+                                </div>
+                                <span className="text-[10px] font-black text-slate-500 w-8">{activity.completionPercentage}%</span>
+                              </div>
+                            </td>
+                            {onUpdateProject && (
+                              <td className="py-4 text-right">
+                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => handleOpenAchievementModal(activity.id)}
+                                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                    title="Report Achievement"
+                                  >
+                                    <FileText size={16} />
+                                  </button>
+                                  {activity.status !== 'Completed' && (
+                                    <button 
+                                      onClick={() => handleUpdateActivityStatus(activity.id, 'Completed')}
+                                      className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                      title="Mark as Completed"
+                                    >
+                                      <CheckCircle size={16} />
+                                    </button>
+                                  )}
+                                  <button 
+                                    onClick={() => handleOpenActivityModal(activity)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                    title="Edit Activity"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteActivity(activity.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Delete Activity"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </div>
+                              </td>
                             )}
-                          </div>
-                        </td>
-                        <td className="py-4 pr-4">
-                          <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-slate-100 text-slate-600">
-                            {activity.category}
-                          </span>
-                        </td>
-                        <td className="py-4 pr-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getActivityStatusColor(activity.status)}`}>
-                            {getActivityStatusIcon(activity.status)}
-                            {activity.status}
-                          </span>
-                        </td>
-                        <td className="py-4 pr-4">
-                          <div className="flex items-center gap-1.5 text-xs text-slate-600">
-                            <Calendar size={12} className="text-slate-400" />
-                            {activity.startDate} <ArrowLeft size={10} className="rotate-180 text-slate-300" /> {activity.endDate}
-                          </div>
-                        </td>
-                        <td className="py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden w-24">
-                              <div 
-                                className={`h-full rounded-full ${activity.completionPercentage === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
-                                style={{width: `${activity.completionPercentage}%`}}
-                              ></div>
-                            </div>
-                            <span className="text-[10px] font-black text-slate-500 w-8">{activity.completionPercentage}%</span>
-                          </div>
-                        </td>
-                        {onUpdateProject && (
-                          <td className="py-4 text-right">
-                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                              {activity.status !== 'Completed' && (
-                                <button 
-                                  onClick={() => handleUpdateActivityStatus(activity.id, 'Completed')}
-                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                  title="Mark as Completed"
-                                >
-                                  <CheckCircle size={16} />
-                                </button>
-                              )}
-                              <button 
-                                onClick={() => handleOpenActivityModal(activity)}
-                                className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                title="Edit Activity"
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteActivity(activity.id)}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete Activity"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
+                          </tr>
+                          {activity.achievements && activity.achievements.length > 0 && (
+                            <tr className="bg-slate-50/50">
+                              <td colSpan={6} className="py-3 px-4 border-t border-slate-100">
+                                <div className="pl-4 border-l-2 border-indigo-200">
+                                  <h5 className="text-xs font-bold text-slate-700 mb-2">Reported Achievements</h5>
+                                  <div className="space-y-2">
+                                    {activity.achievements.map(ach => (
+                                      <div key={ach.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm text-sm">
+                                        <div className="flex justify-between items-start mb-1">
+                                          <span className="font-medium text-slate-800">{ach.description}</span>
+                                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">{ach.date}</span>
+                                        </div>
+                                        <div className="text-xs text-slate-500">Reported by: {ach.reportedBy}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      ))}
+                    </tbody>
                 </table>
               </div>
             ) : activityViewMode === 'BOARD' ? (
@@ -2116,6 +2187,58 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                 className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
               >
                 Save Document
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Achievement Modal */}
+      {isAchievementModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Report Achievement</h2>
+              <button onClick={() => setIsAchievementModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Date</label>
+                <input 
+                  type="date" 
+                  value={achievementForm.date}
+                  onChange={(e) => setAchievementForm({...achievementForm, date: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description</label>
+                <textarea 
+                  value={achievementForm.description}
+                  onChange={(e) => setAchievementForm({...achievementForm, description: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all min-h-[120px]"
+                  placeholder="Describe what was achieved..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Reported By</label>
+                <input 
+                  type="text" 
+                  value={achievementForm.reportedBy}
+                  onChange={(e) => setAchievementForm({...achievementForm, reportedBy: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                />
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveAchievement} 
+                disabled={!achievementForm.description}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Save Achievement
               </button>
             </div>
           </div>

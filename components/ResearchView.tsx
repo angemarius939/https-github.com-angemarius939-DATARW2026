@@ -87,8 +87,11 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
       
       const ai = new GoogleGenAI({ apiKey });
       
+      const datasetsCount = activeReport.datasets?.length || 0;
+      const documentsCount = activeReport.documents?.length || 0;
+      
       const prompt = `Generate a comprehensive, long, and detailed evaluation report for a project titled "${activeReport.title}".
-      The report should synthesize data from ${activeReport.datasets.length} datasets and ${activeReport.documents.length} documents.
+      The report should synthesize data from ${datasetsCount} datasets and ${documentsCount} documents.
       
       Please structure the report with the following sections:
       1. Executive Summary
@@ -104,7 +107,9 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
         contents: prompt,
       });
 
-      const generatedContent = response.text || '<p>Failed to generate report content.</p>';
+      let generatedContent = response.text || '<p>Failed to generate report content.</p>';
+      generatedContent = generatedContent.replace(/```html/g, '').replace(/```/g, '').trim();
+      
       handleUpdateReport({ content: generatedContent });
       onNotify('Detailed comprehensive evaluation report generated successfully.', 'success');
     } catch (error) {
@@ -131,7 +136,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
       const ai = new GoogleGenAI({ apiKey });
       
       const systemInstruction = `You are an expert AI Research Assistant helping a user analyze data and write an evaluation report titled "${activeReport.title}".
-      The user is currently analyzing ${activeReport.datasets.length} datasets and ${activeReport.documents.length} documents.
+      The user is currently analyzing ${activeReport.datasets?.length || 0} datasets and ${activeReport.documents?.length || 0} documents.
       Provide detailed, insightful, and professional responses. If the user asks you to write a section for the report, provide a long, comprehensive text.`;
 
       // Build conversation history
@@ -309,8 +314,8 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (val !== 'default' && !activeReport.datasets.includes(val)) {
-                            handleUpdateReport({ datasets: [...activeReport.datasets, val] });
+                          if (val !== 'default' && !(activeReport.datasets || []).includes(val)) {
+                            handleUpdateReport({ datasets: [...(activeReport.datasets || []), val] });
                           }
                         }}
                         value="default"
@@ -321,12 +326,12 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
                         ))}
                       </select>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {activeReport.datasets.map(ds => {
+                        {(activeReport.datasets || []).map(ds => {
                           const table = virtualTables.find(t => t.id === ds);
                           return (
                             <span key={ds} className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 rounded-md text-xs font-medium">
                               {table?.name || ds}
-                              <button onClick={() => handleUpdateReport({ datasets: activeReport.datasets.filter(d => d !== ds) })} className="hover:text-indigo-900"><X size={12} /></button>
+                              <button onClick={() => handleUpdateReport({ datasets: (activeReport.datasets || []).filter(d => d !== ds) })} className="hover:text-indigo-900"><X size={12} /></button>
                             </span>
                           );
                         })}
@@ -339,8 +344,8 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                         onChange={(e) => {
                           const val = e.target.value;
-                          if (val !== 'default' && !activeReport.documents.includes(val)) {
-                            handleUpdateReport({ documents: [...activeReport.documents, val] });
+                          if (val !== 'default' && !(activeReport.documents || []).includes(val)) {
+                            handleUpdateReport({ documents: [...(activeReport.documents || []), val] });
                           }
                         }}
                         value="default"
@@ -351,12 +356,12 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
                         ))}
                       </select>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {activeReport.documents.map(docId => {
+                        {(activeReport.documents || []).map(docId => {
                           const doc = documents.find(d => d.id === docId);
                           return (
                             <span key={docId} className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-700 rounded-md text-xs font-medium">
                               {doc?.name || docId}
-                              <button onClick={() => handleUpdateReport({ documents: activeReport.documents.filter(d => d !== docId) })} className="hover:text-emerald-900"><X size={12} /></button>
+                              <button onClick={() => handleUpdateReport({ documents: (activeReport.documents || []).filter(d => d !== docId) })} className="hover:text-emerald-900"><X size={12} /></button>
                             </span>
                           );
                         })}
@@ -374,7 +379,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
                     </h3>
                     <button 
                       onClick={handleGenerateReport}
-                      disabled={isGenerating || (activeReport.datasets.length === 0 && activeReport.documents.length === 0)}
+                      disabled={isGenerating}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 disabled:opacity-50 rounded-lg text-xs font-bold transition-colors"
                       title="Auto-generate full report"
                     >
