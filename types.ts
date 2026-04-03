@@ -38,7 +38,8 @@ export enum ViewState {
   FIELD_APP = 'FIELD_APP',
   AI_GENERATOR = 'AI_GENERATOR',
   RESEARCH = 'RESEARCH',
-  INFOGRAPHICS = 'INFOGRAPHICS'
+  INFOGRAPHICS = 'INFOGRAPHICS',
+  DOCUMENTATION = 'DOCUMENTATION'
 }
 
 export enum QuestionType {
@@ -296,6 +297,8 @@ export interface VirtualTable {
   description: string;
   fields: VirtualField[];
   recordsCount: number;
+  sourceDatasets?: string[];
+  computedColumns?: { name: string; formula: string }[];
 }
 
 export interface FormFieldCondition {

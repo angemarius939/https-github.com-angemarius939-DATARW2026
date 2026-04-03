@@ -1719,7 +1719,11 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                         <td className="p-3 text-xs font-bold text-slate-900">{indicator.name}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.baseline} {indicator.unit}</td>
                         <td className="p-3 text-xs font-bold text-indigo-600">{indicator.overallTarget} {indicator.unit}</td>
-                        <td className="p-3 text-xs font-bold text-emerald-600">{indicator.achieved || 0} {indicator.unit}</td>
+                        <td className="p-3 text-xs font-bold text-emerald-600">
+                          {indicator.name === 'Number of beneficiaries reached' && indicator.frequency !== 'Monthly' 
+                            ? '-' 
+                            : `${indicator.achieved || 0} ${indicator.unit}`}
+                        </td>
                         <td className="p-3 text-xs text-slate-600">{indicator.dataSource || '-'}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.dataCollectionMethod || '-'}</td>
                         <td className="p-3 text-xs text-slate-600">{indicator.frequency}</td>

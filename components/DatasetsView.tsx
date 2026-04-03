@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Database, Download, ExternalLink, Search, RefreshCw, Key, Copy, CheckCircle2, Table as TableIcon, Eye, ArrowLeft } from 'lucide-react';
+import { Database, Download, ExternalLink, Search, RefreshCw, Key, Copy, CheckCircle2, Table as TableIcon, Eye, ArrowLeft, Plus, X } from 'lucide-react';
 import { VirtualTable, Project, Survey, Beneficiary, FormSubmission } from '../types';
 
 interface DatasetsViewProps {
   virtualTables: VirtualTable[];
+  setVirtualTables?: React.Dispatch<React.SetStateAction<VirtualTable[]>>;
   projects: Project[];
   surveys: Survey[];
   beneficiaries: Beneficiary[];
@@ -12,10 +13,17 @@ interface DatasetsViewProps {
   organizationName?: string;
 }
 
-const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, surveys, beneficiaries, formSubmissions, onNotify, organizationName = 'My Organization' }) => {
+const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, setVirtualTables, projects, surveys, beneficiaries, formSubmissions, onNotify, organizationName = 'My Organization' }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newDatasetForm, setNewDatasetForm] = useState({ 
+    name: '', 
+    description: '', 
+    sourceDatasets: [] as string[],
+    computedColumns: [] as { name: string; formula: string }[]
+  });
 
   // Group form submissions by formId
   const formDatasets = Array.from(new Set(formSubmissions.map(s => s.formId))).map(formId => {
@@ -52,7 +60,7 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
     d.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getDatasetData = (datasetId: string) => {
+  const getDatasetData = (datasetId: string): any[] => {
     if (datasetId === 'core_projects') {
       return projects.map(p => ({ ID: p.id, Name: p.name, Status: p.status, Budget: p.budget, Spent: p.spent, Beneficiaries: p.beneficiaries, 'Start Date': p.startDate, Manager: p.manager }));
     } else if (datasetId === 'core_surveys') {
@@ -68,7 +76,42 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
         ...s.data
       }));
     } else {
-      // Mock data for virtual tables
+      // Custom virtual table
+      const vt = virtualTables.find(v => v.id === datasetId);
+      if (vt && vt.sourceDatasets && vt.sourceDatasets.length > 0) {
+        // For simplicity, we take the first source dataset's data and add computed columns
+        // A real app would join datasets based on a common key
+        const baseData = getDatasetData(vt.sourceDatasets[0]);
+        
+        if (vt.computedColumns && vt.computedColumns.length > 0) {
+          return baseData.map(row => {
+            const newRow = { ...row };
+            vt.computedColumns!.forEach(col => {
+              try {
+                // Simple formula evaluation: replace [Column Name] with row['Column Name']
+                let formulaStr = col.formula;
+                Object.keys(row).forEach(key => {
+                  const value = row[key];
+                  const numValue = typeof value === 'number' ? value : (isNaN(Number(value)) ? `"${value}"` : Number(value));
+                  // Escape special characters in key for regex
+                  const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                  formulaStr = formulaStr.replace(new RegExp(`\\[${escapedKey}\\]`, 'g'), String(numValue));
+                });
+                
+                // Evaluate the formula
+                // eslint-disable-next-line no-new-func
+                newRow[col.name] = new Function(`return ${formulaStr}`)();
+              } catch (e) {
+                newRow[col.name] = 'Error';
+              }
+            });
+            return newRow;
+          });
+        }
+        return baseData;
+      }
+      
+      // Mock data for other virtual tables
       return [{ id: 1, info: 'Mock data for ' + datasetId }];
     }
   };
@@ -115,6 +158,35 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
     setCopiedKey(id);
     onNotify("Copied to clipboard", "success");
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleCreateDataset = () => {
+    if (!newDatasetForm.name) {
+      onNotify("Dataset name is required", "error");
+      return;
+    }
+    if (newDatasetForm.sourceDatasets.length === 0) {
+      onNotify("Please select at least one source dataset", "error");
+      return;
+    }
+
+    if (setVirtualTables) {
+      const newDataset: VirtualTable = {
+        id: `custom_${Date.now()}`,
+        name: newDatasetForm.name,
+        description: newDatasetForm.description || `Combined dataset from ${newDatasetForm.sourceDatasets.length} sources`,
+        fields: [], // In a real app, this would merge fields from source datasets
+        recordsCount: newDatasetForm.sourceDatasets.length > 0 ? getDatasetData(newDatasetForm.sourceDatasets[0]).length : 0,
+        sourceDatasets: newDatasetForm.sourceDatasets,
+        computedColumns: newDatasetForm.computedColumns
+      };
+      setVirtualTables([...virtualTables, newDataset]);
+      onNotify(`Created dataset: ${newDataset.name}`, "success");
+      setIsCreateModalOpen(false);
+      setNewDatasetForm({ name: '', description: '', sourceDatasets: [], computedColumns: [] });
+    } else {
+      onNotify("Cannot create dataset at this time", "error");
+    }
   };
 
   if (selectedDatasetId) {
@@ -216,6 +288,12 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
           <p className="text-slate-500 mt-1">Manage your data tables, export records, and connect to external BI tools.</p>
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsCreateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-sm"
+          >
+            <Plus size={18} /> Create Dataset
+          </button>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
@@ -355,6 +433,132 @@ const DatasetsView: React.FC<DatasetsViewProps> = ({ virtualTables, projects, su
           </div>
         </div>
       </div>
+
+      {/* Create Dataset Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] animate-slide-up">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
+              <h2 className="text-2xl font-black text-slate-900 tracking-tight">Create Dataset</h2>
+              <button onClick={() => setIsCreateModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Dataset Name</label>
+                <input 
+                  type="text" 
+                  value={newDatasetForm.name}
+                  onChange={(e) => setNewDatasetForm({...newDatasetForm, name: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                  placeholder="E.g., Combined Beneficiary Data"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Description</label>
+                <textarea 
+                  value={newDatasetForm.description}
+                  onChange={(e) => setNewDatasetForm({...newDatasetForm, description: e.target.value})}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all min-h-[100px]"
+                  placeholder="Describe the purpose of this dataset..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Source Datasets</label>
+                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-2">
+                  {datasets.map(d => (
+                    <label key={d.id} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                        checked={newDatasetForm.sourceDatasets.includes(d.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setNewDatasetForm({...newDatasetForm, sourceDatasets: [...newDatasetForm.sourceDatasets, d.id]});
+                          } else {
+                            setNewDatasetForm({...newDatasetForm, sourceDatasets: newDatasetForm.sourceDatasets.filter(id => id !== d.id)});
+                          }
+                        }}
+                      />
+                      <div className="flex-1">
+                        <div className="font-bold text-slate-800 text-sm">{d.name}</div>
+                        <div className="text-xs text-slate-500">{d.records} records</div>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">Computed Columns</label>
+                  <button 
+                    onClick={() => setNewDatasetForm({...newDatasetForm, computedColumns: [...newDatasetForm.computedColumns, { name: '', formula: '' }]})}
+                    className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
+                  >
+                    <Plus size={14} /> Add Column
+                  </button>
+                </div>
+                {newDatasetForm.computedColumns.length === 0 ? (
+                  <div className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-xl border border-slate-200 text-center">
+                    No computed columns added.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {newDatasetForm.computedColumns.map((col, idx) => (
+                      <div key={idx} className="flex gap-3 items-start">
+                        <div className="flex-1 space-y-2">
+                          <input 
+                            type="text" 
+                            placeholder="Column Name (e.g., Total Cost)" 
+                            value={col.name}
+                            onChange={(e) => {
+                              const newCols = [...newDatasetForm.computedColumns];
+                              newCols[idx].name = e.target.value;
+                              setNewDatasetForm({...newDatasetForm, computedColumns: newCols});
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                          />
+                          <input 
+                            type="text" 
+                            placeholder="Formula (e.g., [Budget] - [Spent])" 
+                            value={col.formula}
+                            onChange={(e) => {
+                              const newCols = [...newDatasetForm.computedColumns];
+                              newCols[idx].formula = e.target.value;
+                              setNewDatasetForm({...newDatasetForm, computedColumns: newCols});
+                            }}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all"
+                          />
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const newCols = newDatasetForm.computedColumns.filter((_, i) => i !== idx);
+                            setNewDatasetForm({...newDatasetForm, computedColumns: newCols});
+                          }}
+                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors mt-1"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleCreateDataset} 
+                disabled={!newDatasetForm.name || newDatasetForm.sourceDatasets.length === 0}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Create Dataset
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

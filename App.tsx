@@ -48,6 +48,7 @@ import FieldAppView from './components/FieldAppView';
 import AIGeneratorView from './components/AIGeneratorView';
 import ResearchView from './components/ResearchView';
 import InfographicsView from './components/InfographicsView';
+import DocumentationView from './components/DocumentationView';
 import { ViewState, CustomPage, Project, Survey, Beneficiary, PageConfigs, ViewConfig, VirtualTable, WorkflowAction, FormDefinition, FormSubmission, AppUser, PageWidget, RoleDefinition, ProjectTemplate } from './types';
 import { 
   LayoutDashboard, FileText, FolderKanban, Settings, LogOut, 
@@ -55,7 +56,7 @@ import {
   Layout, CheckCircle2, ChevronDown, Layers, Wrench,
   FolderOpen, BarChart3, Database, MessageSquare,
   Edit3, Plus, Table as TableIcon, FilePlus, LineChart, Smartphone, BrainCircuit, Bot,
-  Moon, Sun, Microscope
+  Moon, Sun, Microscope, BookOpen
 } from 'lucide-react';
 import * as Icons from 'lucide-react';
 
@@ -280,6 +281,23 @@ const App: React.FC = () => {
             dataCollectionMethod: 'Site Visits',
             responsible: 'Project Manager',
             timeline: 'Year 1 (2024)'
+          },
+          {
+            id: 'ind-1716597197043',
+            code: 'G1.1',
+            name: 'Number of beneficiaries reached',
+            expectedResult: 'Increased access to services',
+            level: 'Output',
+            unit: '%',
+            frequency: 'Monthly',
+            baseline: '0',
+            overallTarget: '95',
+            achieved: '85',
+            periodicData: [],
+            dataSource: 'Project Field Reports',
+            dataCollectionMethod: 'Household survey',
+            responsible: 'M&E Officer',
+            timeline: '2024-2026'
           }
         ],
         thematicAreas: ['WASH', 'Health'],
@@ -449,7 +467,8 @@ const App: React.FC = () => {
       [ViewState.REPORTS]: 'Reports',
       [ViewState.RESEARCH]: 'Reports', // Map Research to Reports permission
       [ViewState.ADMIN_PANEL]: 'Admin Panel',
-      [ViewState.SETTINGS]: 'Admin Panel' // Assuming settings is admin only
+      [ViewState.SETTINGS]: 'Admin Panel', // Assuming settings is admin only
+      [ViewState.DOCUMENTATION]: null // null means accessible to all authenticated users
     };
 
     const requiredPermission = viewToPermissionMap[view];
@@ -571,6 +590,11 @@ const App: React.FC = () => {
                  </button>
                </>
              )}
+             
+             <div className="pt-6 pb-2 text-[10px] font-black text-slate-500 uppercase tracking-widest px-3">Help & Support</div>
+             <button onClick={() => setView(ViewState.DOCUMENTATION)} className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${view === ViewState.DOCUMENTATION ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+               <BookOpen size={18} /> Documentation
+             </button>
           </div>
           
           <div className="p-4 border-t border-slate-800 bg-slate-900/50">
@@ -776,6 +800,7 @@ const App: React.FC = () => {
            {view === ViewState.DATASETS && (
              <DatasetsView 
                virtualTables={virtualTables}
+               setVirtualTables={setVirtualTables}
                projects={projects}
                surveys={surveys}
                beneficiaries={beneficiaries}
@@ -811,6 +836,9 @@ const App: React.FC = () => {
                formSubmissions={formSubmissions}
                onNotify={notify}
              />
+           )}
+           {view === ViewState.DOCUMENTATION && (
+             <DocumentationView />
            )}
         </div>
       </main>
