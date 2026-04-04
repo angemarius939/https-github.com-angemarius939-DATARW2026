@@ -18,8 +18,9 @@ export const generateSurveyFromDescription = async (description: string, fileCon
     
     let prompt = `
       You are an expert M&E (Monitoring and Evaluation) consultant for NGOs in Rwanda.
-      Create a professional data collection survey based on the following requirement: "${description}".
+      Create a comprehensive, expanded, and professional data collection survey based on the following requirement: "${description}".
       The survey should be culturally relevant and practical.
+      Ensure the survey is highly detailed and contains a wide variety of questions (aim for at least 100 questions) covering all necessary aspects of the topic, such as demographics, core metrics, qualitative feedback, and field observations. Make sure the survey is applicable to all projects.
       Provide a title, a short description, and a list of questions.
       For 'type', strictly use one of: 'TEXT', 'MULTIPLE_CHOICE', 'NUMBER', 'DATE', 'BOOLEAN', 'CALCULATION', 'IMAGE', 'SIGNATURE'.
       Determine if each question should be mandatory (required) or optional.
