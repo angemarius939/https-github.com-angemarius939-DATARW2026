@@ -6,8 +6,11 @@ import { AIHubResponse, QuestionType } from "../types";
 let aiClient: GoogleGenAI | null = null;
 const getAiClient = () => {
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY || 'dummy_key_for_build';
-    aiClient = new GoogleGenAI({ apiKey });
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey || apiKey === 'dummy_key_for_build') {
+      console.error("GEMINI_API_KEY is missing. Please set it in your environment variables (e.g., Vercel).");
+    }
+    aiClient = new GoogleGenAI({ apiKey: apiKey || 'dummy_key_for_build' });
   }
   return aiClient;
 };

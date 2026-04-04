@@ -83,7 +83,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
     
     try {
       const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Gemini API key is missing');
+      if (!apiKey || apiKey === 'dummy_key_for_build') throw new Error('Gemini API key is missing. Please configure it in your Vercel environment variables.');
       
       const ai = new GoogleGenAI({ apiKey });
       
@@ -131,7 +131,7 @@ const ResearchView: React.FC<ResearchViewProps> = ({ projects, virtualTables, do
     
     try {
       const apiKey = (import.meta as any).env?.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error('Gemini API key is missing');
+      if (!apiKey || apiKey === 'dummy_key_for_build') throw new Error('Gemini API key is missing. Please configure it in your Vercel environment variables.');
       
       const ai = new GoogleGenAI({ apiKey });
       

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area, LineChart, Line } from 'recharts';
 import { TrendingUp, Users, DollarSign, AlertCircle, Sparkles, Loader2, Download, Plus } from 'lucide-react';
 import { Project, ProjectMilestone, PageWidget, DataSourceType } from '../types';
 import { GoogleGenAI } from "@google/genai";
@@ -27,6 +27,29 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
   const [detailedSummary, setDetailedSummary] = useState<string | null>(null);
   const [isDetailedSummaryLoading, setIsDetailedSummaryLoading] = useState(false);
   
+  const [selectedMEProjectId, setSelectedMEProjectId] = useState<string>(projects[0]?.id || '');
+  const [selectedIndicatorId, setSelectedIndicatorId] = useState<string>('');
+
+  useEffect(() => {
+    if (!selectedMEProjectId && projects.length > 0) {
+      setSelectedMEProjectId(projects[0].id);
+    }
+  }, [projects, selectedMEProjectId]);
+
+  const selectedMEProject = projects.find(p => p.id === selectedMEProjectId);
+  
+  useEffect(() => {
+    if (selectedMEProject && selectedMEProject.indicators && selectedMEProject.indicators.length > 0) {
+      if (!selectedIndicatorId || !selectedMEProject.indicators.find(i => i.id === selectedIndicatorId)) {
+        setSelectedIndicatorId(selectedMEProject.indicators[0].id);
+      }
+    } else {
+      setSelectedIndicatorId('');
+    }
+  }, [selectedMEProject, selectedIndicatorId]);
+
+  const selectedIndicator = selectedMEProject?.indicators?.find(i => i.id === selectedIndicatorId);
+
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([
     { id: '1', name: 'Initial Planning', dueDate: '2026-04-01', status: 'Completed', completionDate: '2026-03-10' },
     { id: '2', name: 'Phase 1 Execution', dueDate: '2026-06-15', status: 'In Progress' },
@@ -139,7 +162,12 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
   const fetchAIInsight = async () => {
     setIsAiLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'dummy_key_for_build') {
+        setAiInsight("AI Insights are unavailable. Please configure the GEMINI_API_KEY environment variable in Vercel.");
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const summary = projects.map(p => {
         const docSummary = (p.documents || []).map(d => `${d.name} (${d.category}): ${d.content || 'No content'}`).join(' | ');
         return `${p.name} (Location: ${p.location}): ${p.status} (${p.progress}% complete, Budget: ${p.budget}, Spent: ${p.spent}). Narrative: ${p.narrative || 'None'}. Documents: ${docSummary || 'None'}`;
@@ -166,7 +194,12 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
   const generateDetailedSummary = async () => {
     setIsDetailedSummaryLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'dummy_key_for_build') {
+        setDetailedSummary("Detailed AI Insights are unavailable. Please configure the GEMINI_API_KEY environment variable in Vercel.");
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       const summary = projects.map(p => {
         const docSummary = (p.documents || []).map(d => `${d.name} (${d.category}): ${d.content || 'No content'}`).join(' | ');
         return `${p.name} (Location: ${p.location}): ${p.status} (${p.progress}% complete, Budget: ${p.budget}, Spent: ${p.spent}). Narrative: ${p.narrative || 'None'}. Documents: ${docSummary || 'None'}`;
@@ -428,6 +461,76 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
             </div>
           )}
         </div>
+      </div>
+
+      {/* M&E Progress Over Time Section */}
+      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <LineChartIcon className="text-indigo-600" size={20} /> M&E Progress Over Time
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <select 
+              className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5"
+              value={selectedMEProjectId}
+              onChange={(e) => setSelectedMEProjectId(e.target.value)}
+            >
+              {projects.map(p => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+            {selectedMEProject?.indicators && selectedMEProject.indicators.length > 0 && (
+              <select 
+                className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2.5 max-w-[300px] truncate"
+                value={selectedIndicatorId}
+                onChange={(e) => setSelectedIndicatorId(e.target.value)}
+              >
+                {selectedMEProject.indicators.map(ind => (
+                  <option key={ind.id} value={ind.id}>{ind.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        </div>
+        
+        {selectedIndicator && selectedIndicator.periodicData && selectedIndicator.periodicData.length > 0 ? (
+          <div className="h-[350px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={selectedIndicator.periodicData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="period" axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{fill: '#64748b', fontSize: 12}} dx={-10} />
+                <Tooltip 
+                  contentStyle={{borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'}}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="target" 
+                  name="Target" 
+                  stroke="#94a3b8" 
+                  strokeWidth={2} 
+                  strokeDasharray="5 5" 
+                  dot={{ r: 4, fill: '#94a3b8' }} 
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="actual" 
+                  name="Actual" 
+                  stroke="#4f46e5" 
+                  strokeWidth={3} 
+                  dot={{ r: 6, fill: '#4f46e5', strokeWidth: 2, stroke: '#ffffff' }} 
+                  activeDot={{ r: 8, fill: '#4f46e5', strokeWidth: 0 }} 
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="h-[350px] flex flex-col items-center justify-center text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <LineChartIcon size={48} className="mb-4 opacity-20" />
+            <p className="font-bold text-slate-500">No periodic data available</p>
+            <p className="text-sm mt-1">Select a different indicator or project to view progress.</p>
+          </div>
+        )}
       </div>
 
       {/* Risk Matrix Section */}

@@ -166,7 +166,12 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
   const handleGenerateInsight = async () => {
     setIsAiLoading(true);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'dummy_key_for_build') {
+        setAiInsight("AI Insights are unavailable. Please configure the GEMINI_API_KEY environment variable in Vercel.");
+        return;
+      }
+      const ai = new GoogleGenAI({ apiKey });
       
       const docsContext = (project.documents || [])
         .map(d => `Document: ${d.name} (${d.category})\nContent: ${d.content || 'No content provided'}`)

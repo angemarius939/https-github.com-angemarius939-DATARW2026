@@ -301,8 +301,8 @@ export default function DataAnalysisView({ projects, beneficiaries, surveys, vir
     setIsGeneratingInsights(true);
     setError(null);
     try {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) throw new Error("Gemini API key is missing.");
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'dummy_key_for_build') throw new Error("Gemini API key is missing. Please configure it in your Vercel environment variables.");
 
       const ai = new GoogleGenAI({ apiKey });
       
