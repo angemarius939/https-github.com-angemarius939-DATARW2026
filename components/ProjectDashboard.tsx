@@ -24,6 +24,8 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
   const [editingWidgets, setEditingWidgets] = useState<PageWidget[]>([]);
   const [aiInsight, setAiInsight] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [detailedSummary, setDetailedSummary] = useState<string | null>(null);
+  const [isDetailedSummaryLoading, setIsDetailedSummaryLoading] = useState(false);
   
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([
     { id: '1', name: 'Initial Planning', dueDate: '2026-04-01', status: 'Completed', completionDate: '2026-03-10' },
@@ -161,6 +163,33 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
     }
   };
 
+  const generateDetailedSummary = async () => {
+    setIsDetailedSummaryLoading(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      const summary = projects.map(p => {
+        const docSummary = (p.documents || []).map(d => `${d.name} (${d.category}): ${d.content || 'No content'}`).join(' | ');
+        return `${p.name} (Location: ${p.location}): ${p.status} (${p.progress}% complete, Budget: ${p.budget}, Spent: ${p.spent}). Narrative: ${p.narrative || 'None'}. Documents: ${docSummary || 'None'}`;
+      }).join('\n\n');
+      
+      const globalDocsContext = globalDocuments.map(d => `${d.name} (${d.category}): ${d.content || 'No content'}`).join('\n');
+      
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: `Given these NGO projects in Rwanda:\n\n${summary}\n\nGlobal Documents:\n${globalDocsContext}\n\nProvide a detailed strategic summary of the organization's projects. Include an overview of project health, a detailed analysis of budget utilization and variances, an assessment of risks, and strategic recommendations for the future. Format the response using Markdown with clear headings and bullet points.`
+      });
+      setDetailedSummary(response.text || "Detailed summary could not be generated.");
+    } catch (e: any) {
+      if (e?.status === 429 || e?.message?.includes('429') || e?.message?.includes('RESOURCE_EXHAUSTED')) {
+        setDetailedSummary("Detailed AI Insights are currently unavailable due to API quota limits.");
+      } else {
+        setDetailedSummary("An error occurred while generating the detailed summary.");
+      }
+    } finally {
+      setIsDetailedSummaryLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchAIInsight();
   }, [projects]);
@@ -240,16 +269,34 @@ const ProjectDashboard: React.FC<ProjectDashboardProps> = ({ organizationName, p
                  </div>
                )}
             </div>
-            <div className="shrink-0 self-start md:self-center mt-4 md:mt-0">
+            <div className="shrink-0 self-start md:self-center mt-4 md:mt-0 flex flex-col gap-3">
               <button 
                 onClick={fetchAIInsight} 
                 disabled={isAiLoading}
-                className="bg-white text-indigo-900 px-6 py-3 rounded-xl text-sm font-black uppercase tracking-wider hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="bg-white text-indigo-900 px-6 py-3 rounded-xl text-sm font-black uppercase tracking-wider hover:bg-indigo-50 transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center"
               >
                 {isAiLoading ? 'Analyzing...' : 'Refresh Analysis'}
               </button>
+              <button 
+                onClick={generateDetailedSummary} 
+                disabled={isDetailedSummaryLoading}
+                className="bg-indigo-700 text-white px-6 py-3 rounded-xl text-sm font-black uppercase tracking-wider hover:bg-indigo-600 transition-all shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 justify-center border border-indigo-500"
+              >
+                {isDetailedSummaryLoading ? 'Generating...' : 'Detailed Summary'}
+              </button>
             </div>
          </div>
+         
+         {detailedSummary && (
+           <div className="relative z-10 mt-8 pt-8 border-t border-indigo-500/30">
+             <div className="flex items-center gap-3 mb-4">
+               <h4 className="font-bold text-xl text-white">Detailed Strategic Analysis</h4>
+             </div>
+             <div className="prose prose-invert max-w-none bg-black/20 p-6 rounded-2xl border border-white/10">
+               <div dangerouslySetInnerHTML={{ __html: detailedSummary.replace(/\n/g, '<br />').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>') }} />
+             </div>
+           </div>
+         )}
       </div>
 
       {/* KPI Cards */}

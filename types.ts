@@ -86,6 +86,14 @@ export interface Survey {
 }
 
 // Financial Structures
+export interface BudgetOperation {
+  id: string;
+  date: string;
+  amount: number;
+  description: string;
+  recordedBy: string;
+}
+
 export interface BudgetLine {
   id: string;
   code: string;
@@ -94,6 +102,7 @@ export interface BudgetLine {
   allocated: number;
   spent: number;
   variance: number;
+  operations?: BudgetOperation[];
 }
 
 // M&E Structures

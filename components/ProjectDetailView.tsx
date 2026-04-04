@@ -80,6 +80,14 @@ const ProjectDetailView: React.FC<ProjectDetailViewProps> = ({ project, onBack, 
     actual: 0
   });
 
+  const [isRecordOperationModalOpen, setIsRecordOperationModalOpen] = useState(false);
+  const [recordingBudgetLineId, setRecordingBudgetLineId] = useState<string | null>(null);
+  const [operationForm, setOperationForm] = useState<{date: string, amount: number, description: string}>({
+    date: new Date().toISOString().split('T')[0],
+    amount: 0,
+    description: ''
+  });
+
   const [isMilestoneModalOpen, setIsMilestoneModalOpen] = useState(false);
   const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(null);
   const [milestoneForm, setMilestoneForm] = useState<Partial<ProjectMilestone>>({
@@ -223,6 +231,54 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
       actual: 0
     });
     setIsRecordDataModalOpen(true);
+  };
+
+  const handleOpenRecordOperationModal = (budgetLineId: string) => {
+    setRecordingBudgetLineId(budgetLineId);
+    setOperationForm({
+      date: new Date().toISOString().split('T')[0],
+      amount: 0,
+      description: ''
+    });
+    setIsRecordOperationModalOpen(true);
+  };
+
+  const handleSaveRecordOperation = () => {
+    if (!onUpdateProject || !recordingBudgetLineId || !operationForm.amount) return;
+
+    const updatedBudgetLines = (project.budgetLines || []).map(line => {
+      if (line.id === recordingBudgetLineId) {
+        const newOperations = [...(line.operations || []), {
+          id: `op-${Date.now()}`,
+          date: operationForm.date,
+          amount: Number(operationForm.amount),
+          description: operationForm.description,
+          recordedBy: 'Current User' // Ideally from context
+        }];
+        
+        const totalSpent = newOperations.reduce((sum, op) => sum + op.amount, 0);
+        const variance = line.allocated - totalSpent;
+
+        return {
+          ...line,
+          operations: newOperations,
+          spent: totalSpent,
+          variance: variance
+        };
+      }
+      return line;
+    });
+
+    const totalProjectSpent = updatedBudgetLines.reduce((sum, line) => sum + line.spent, 0);
+
+    onUpdateProject({
+      ...project,
+      budgetLines: updatedBudgetLines,
+      spent: totalProjectSpent
+    });
+
+    setIsRecordOperationModalOpen(false);
+    setRecordingBudgetLineId(null);
   };
 
   const handleSaveRecordData = () => {
@@ -811,63 +867,127 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
               </div>
             </div>
 
-            {/* Budget Breakdown */}
+            {/* Budget & Resource Distribution */}
             <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8">
               <h4 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2">
-                <PieChartIcon className="text-indigo-600" size={20} /> Budget Allocation
+                <PieChartIcon className="text-indigo-600" size={20} /> Budget & Resource Distribution
               </h4>
-              <div className="space-y-6">
-                {project.budgetLines && project.budgetLines.length > 0 ? (
-                  <>
-                    <div className="h-[250px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie
-                            data={project.budgetLines}
-                            dataKey="allocated"
-                            nameKey="category"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            innerRadius={50}
-                            paddingAngle={5}
-                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          >
-                            {project.budgetLines.map((entry, index) => {
-                              const COLORS = ['#4f46e5', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#f97316'];
-                              return <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />;
-                            })}
-                          </Pie>
-                          <Tooltip 
-                            formatter={(value: number) => `RWF ${value.toLocaleString()}`}
-                          />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="space-y-4">
-                      {project.budgetLines.map((line) => {
-                        const percent = project.budget > 0 ? Math.round((line.allocated / project.budget) * 100) : 0;
-                        return (
-                          <div key={line.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                            <div className="flex justify-between items-center mb-2">
-                              <span className="font-bold text-slate-700 text-sm">{line.category}</span>
-                              <span className="font-black text-slate-900 text-sm">{(line.allocated / 1000000).toFixed(1)}M RWF</span>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                                <div className="h-full bg-indigo-400 rounded-full" style={{width: `${percent}%`}}></div>
-                              </div>
-                              <span className="text-[10px] font-black text-slate-400 w-8 text-right">{percent}%</span>
-                            </div>
+              
+              {project.budgetLines && project.budgetLines.length > 0 ? (
+                <div className="space-y-8">
+                  {/* Overall Budget Metrics */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {(() => {
+                      const totalPlanned = project.budgetLines.reduce((sum, line) => sum + line.allocated, 0);
+                      const totalSpent = project.budgetLines.reduce((sum, line) => sum + line.spent, 0);
+                      const variance = totalPlanned - totalSpent;
+                      const variancePercent = totalPlanned > 0 ? (variance / totalPlanned) * 100 : 0;
+                      const burnRate = totalPlanned > 0 ? (totalSpent / totalPlanned) * 100 : 0;
+                      const remaining = totalPlanned - totalSpent;
+                      const status = burnRate > 100 ? 'Over Budget' : burnRate < 50 ? 'Underutilized' : 'On Track';
+
+                      return (
+                        <>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Planned Budget</p>
+                            <p className="text-lg font-black text-slate-900">RWF {(totalPlanned / 1000000).toFixed(1)}M</p>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-sm text-slate-500 italic text-center py-4">No budget breakdown available.</p>
-                )}
-              </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Actual Expenditure</p>
+                            <p className="text-lg font-black text-slate-900">RWF {(totalSpent / 1000000).toFixed(1)}M</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Variance</p>
+                            <p className={`text-lg font-black ${variance < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                              RWF {(variance / 1000000).toFixed(1)}M ({variancePercent.toFixed(1)}%)
+                            </p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Burn Rate</p>
+                            <p className="text-lg font-black text-slate-900">{burnRate.toFixed(1)}%</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Remaining Balance</p>
+                            <p className="text-lg font-black text-slate-900">RWF {(remaining / 1000000).toFixed(1)}M</p>
+                          </div>
+                          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Utilization Status</p>
+                            <p className={`text-sm font-bold px-2 py-1 rounded inline-block mt-1 ${
+                              status === 'On Track' ? 'bg-emerald-100 text-emerald-700' :
+                              status === 'Over Budget' ? 'bg-red-100 text-red-700' :
+                              'bg-amber-100 text-amber-700'
+                            }`}>
+                              {status}
+                            </p>
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Budget Lines Table */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50">
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-tl-xl">Category</th>
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Planned</th>
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Spent</th>
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Variance</th>
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Burn Rate</th>
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500">Status</th>
+                          <th className="p-3 text-[10px] font-black uppercase tracking-widest text-slate-500 rounded-tr-xl">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {project.budgetLines.map((line) => {
+                          const burnRate = line.allocated > 0 ? (line.spent / line.allocated) * 100 : 0;
+                          const variance = line.allocated - line.spent;
+                          const status = burnRate > 100 ? 'Over Budget' : burnRate < 50 ? 'Underutilized' : 'On Track';
+                          
+                          return (
+                            <tr key={line.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                              <td className="p-3 font-bold text-slate-700 text-xs">{line.category}</td>
+                              <td className="p-3 text-xs text-slate-600">RWF {(line.allocated / 1000000).toFixed(1)}M</td>
+                              <td className="p-3 text-xs text-slate-600">RWF {(line.spent / 1000000).toFixed(1)}M</td>
+                              <td className={`p-3 text-xs font-bold ${variance < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                RWF {(variance / 1000000).toFixed(1)}M
+                              </td>
+                              <td className="p-3 text-xs text-slate-600">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-16 bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                                    <div className={`h-full rounded-full ${burnRate > 100 ? 'bg-red-500' : 'bg-indigo-500'}`} style={{width: `${Math.min(burnRate, 100)}%`}}></div>
+                                  </div>
+                                  <span>{burnRate.toFixed(0)}%</span>
+                                </div>
+                              </td>
+                              <td className="p-3 text-xs">
+                                <span className={`px-2 py-1 rounded font-bold ${
+                                  status === 'On Track' ? 'bg-emerald-100 text-emerald-700' :
+                                  status === 'Over Budget' ? 'bg-red-100 text-red-700' :
+                                  'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {status}
+                                </span>
+                              </td>
+                              <td className="p-3 text-xs">
+                                <button 
+                                  onClick={() => handleOpenRecordOperationModal(line.id)}
+                                  className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-bold"
+                                >
+                                  <Plus size={14} /> Record Op
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500 italic text-center py-4">No budget breakdown available.</p>
+              )}
             </div>
           </div>
 
@@ -2498,6 +2618,59 @@ Provide a concise, 2-3 sentence strategic insight based on this information.`;
                 className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
               >
                 Save Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isRecordOperationModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in slide-in-from-bottom-8 duration-300">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">Record Expenditure</h3>
+              <button onClick={() => setIsRecordOperationModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar space-y-6">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Date</label>
+                <input 
+                  type="date" 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                  value={operationForm.date} 
+                  onChange={e => setOperationForm({...operationForm, date: e.target.value})} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Amount (RWF)</label>
+                <input 
+                  type="number" 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all placeholder:text-slate-400 placeholder:font-medium" 
+                  placeholder="0"
+                  value={operationForm.amount || ''} 
+                  onChange={e => setOperationForm({...operationForm, amount: Number(e.target.value)})} 
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Description</label>
+                <textarea 
+                  className="w-full bg-slate-50 border-0 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600/20 focus:bg-white transition-all placeholder:text-slate-400 placeholder:font-medium resize-none" 
+                  placeholder="What was this expenditure for?"
+                  rows={3}
+                  value={operationForm.description} 
+                  onChange={e => setOperationForm({...operationForm, description: e.target.value})} 
+                />
+              </div>
+            </div>
+            <div className="p-8 border-t border-slate-100 flex justify-end gap-4 bg-slate-50/50 shrink-0">
+              <button 
+                onClick={handleSaveRecordOperation} 
+                disabled={!operationForm.date || operationForm.amount <= 0 || !operationForm.description}
+                className="px-10 py-3 bg-indigo-600 text-white font-black text-xs uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-700 transition-all shadow-xl disabled:opacity-50"
+              >
+                Save Expenditure
               </button>
             </div>
           </div>
